@@ -1,0 +1,53 @@
+CLAUDE.md - contexto del proyecto e instrucciones para Claude
+AGENTS.md - reglas que genera Next.js (no editar)
+mapa.txt - este mapa de archivos
+.env.example - plantilla de variables de Supabase (copiar como .env.local)
+supabase/schema.sql - script original de la BD (v1, referencia)
+supabase/migracion_v2.sql - rehace la BD: personas, periodos, avisos, reglas nuevas
+supabase/migracion_v2_1.sql - lista de espera, ajustes y periodos.origen (rotación)
+supabase/migracion_v2_2.sql - función correr_rotacion() (asigna por un mes)
+components/estacionamientos/ListaEspera.tsx - recuadro plegable: lista de espera + vista previa
+components/estacionamientos/EditorRotacion.tsx - editar fecha/persona/fechas antes de asignar rotación
+supabase/migracion_v2_3.sql - asignar_rotacion(propuesta editada) + correr_rotacion
+supabase/cron_rotacion.sql - pg_cron: corre la rotación lunes a viernes 10:00 UTC
+.env.local - variables reales de Supabase (NO se sube a GitHub)
+package.json - dependencias y comandos (npm run dev)
+app/layout.tsx - marco común de todas las páginas
+app/globals.css - estilos globales (Tailwind)
+lib/supabase/client.ts - conexión a Supabase desde el navegador
+lib/supabase/server.ts - conexión a Supabase desde el servidor
+lib/rol.tsx - rol admin/usuario y bloqueo de páginas solo admin
+lib/errores.ts - traduce errores de Supabase a español
+proxy.ts - portero: sin sesión redirige a /login
+app/login/page.tsx - formulario para pedir enlace mágico
+app/auth/callback/route.ts - regreso del enlace: crea la sesión
+app/auth/salir/route.ts - cerrar sesión
+public/logo.png - logo The House Advisory
+components/Sidebar.tsx - menú lateral con logo y páginas
+app/(app)/layout.tsx - marco interno: menú lateral + contenido
+app/(app)/estacionamientos/page.tsx - página Estacionamientos: lee puestos y periodos de Supabase
+components/estacionamientos/accionesBD.ts - acciones del admin que guardan en Supabase
+app/(app)/disponibilidad/page.tsx - Disponibilidad: lee puestos, reservas y avisos de Supabase
+lib/puestosBD.ts - lee puestos de Supabase y los convierte para el plano
+components/disponibilidad/VistaDisponibilidad.tsx - usuario: calendario (2/3) + "Lo tuyo" (1/3)
+components/disponibilidad/CalendarioDisponibles.tsx - calendario de libres: mes, semana, día
+components/disponibilidad/ModalTomar.tsx - ventana "¿Quieres tomar/soltar el …?" con confirmar
+components/disponibilidad/PanelDueno.tsx - dueño: su fijo, "No voy" y recuperar
+app/(app)/personas/page.tsx - página Personas: lee personas desde Supabase (solo admin)
+components/personas/VistaPersonas.tsx - lista del equipo; agrega, edita y da de baja en Supabase
+components/personas/FormPersona.tsx - ventana agregar/editar persona (correo @thehouse.cl)
+next.config.ts - configuración Next (cacheComponents, Tailwind)
+components/estacionamientos/datosPrueba.ts - modelo Puesto y estado del día (sin datos de ejemplo)
+components/estacionamientos/AutoCenital.tsx - dibujo SVG de auto visto desde arriba
+components/estacionamientos/asfalto.ts - fondo de asfalto compartido (plano y calendario)
+components/estacionamientos/CajonEstacionamiento.tsx - un cajón: fijo, rotación, libre, sin dueño o especial
+components/estacionamientos/ZonaEstacionamiento.tsx - grupo del plano (Fijos/Rotación/Libres) sobre asfalto
+components/estacionamientos/PlanoEstacionamientos.tsx - vista admin: pestañas Plano de hoy / Calendario
+components/estacionamientos/CalendarioAdmin.tsx - admin: alertas + calendario semana/mes/año
+components/estacionamientos/personas.local.ts - PRIVADO, YA NO SE USA (se puede borrar)
+components/estacionamientos/fechas.ts - ayudas de fechas (hoy en Chile, mes, día semana)
+components/estacionamientos/TarjetaPuesto.tsx - tarjeta admin: datos, acciones y programado
+components/estacionamientos/FormLiberar.tsx - formulario Liberar: cuándo y para quién
+components/estacionamientos/FormDueno.tsx - panel Dueño: elegir persona sin fijo y confirmar
+components/estacionamientos/AutoDeJuguete.tsx - autito que maneja al nuevo cajón (animación)
+.claude/launch.json - configuración para abrir la app de prueba

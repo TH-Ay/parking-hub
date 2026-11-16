@@ -1,0 +1,254 @@
+// Tarjeta del admin (a la derecha): datos del puesto elegido, sus acciones y lo programado.
+// Acciones listas: Liberar. Las demás se programan una por una en los siguientes pasos.
+import { useState } from "react";
+import { ArrowLeftRight, CalendarOff, Lock, LockOpen, Star, User, UserMinus, X, type LucideIcon } from "lucide-react";
+import FormLiberar from "./FormLiberar";
+import FormDueno from "./FormDueno";
+import type { Asignacion, EstadoDelDia, Liberacion, Programado, Puesto } from "./datosPrueba";
+
+type Props = {
+  puesto: Puesto;
+  estado: EstadoDelDia;
+  programado: Programado[];
+  hoy: string;
+  onLiberar: (l: Liberacion) => void;
+  onQuitar: (clave: string) => void;
+  disponibles: string[]; // personas sin puesto fijo (para elegir dueño)
+  onCambiarDueno: (nuevo: string | null) => void;
+  onPasarAVariable: () => void;
+  onMarcarEspecial: (nombre: string) => void;
+  onQuitarEspecial: () => void;
+  onPasarAFijo: (dueno: string | null) => void;
+  onAsignar: (a: Asignacion) => void;
+};
+
+export default function TarjetaPuesto(props: Props) {
+  const { puesto, estado, programado, hoy: fechaHoy, onLiberar, onQuitar, disponibles, onCambiarDueno, onPasarAVariable, onMarcarEspecial, onQuitarEspecial, onPasarAFijo, onAsignar } =
+    props;
+  const [nombreEspecial, setNombreEspecial] = useState("");
+  const [abierto, setAbierto] = useState<string | null>(null); // acción con su formulario abierto
+  const tipo = puesto.tipo === "fijo" ? "Fijo" : puesto.tipo === "variable" ? "Variable" : "Especial";
+  const hoy = estado.zona === "libres" ? "Libre" : (estado.quien ?? "Sin dueño aún");
+
+  const acciones: [LucideIcon, string][] =
+    puesto.tipo === "fijo"
+      ? puesto.dueno
+        ? [
+            [User, `Dueño: ${puesto.dueno}`],
+            [UserMinus, "Quitar dueño"],
+            [CalendarOff, "Liberar"], // incluye "para una persona" (rotación)
+          ]
+        : [
+            // Fijo aún sin dueño: no hay nada que liberar
+            [User, "Dueño: aún sin asignar"],
+            [UserMinus, "Pasar a variable"],
+            [ArrowLeftRight, "Asignar por un periodo"],
+          ]
+      : puesto.tipo === "variable"
+        ? [
+            [Lock, "Pasar a fijo"],
+            [ArrowLeftRight, "Asignar por un periodo"],
+            [Star, "Marcar como especial"],
+          ]
+        : [[LockOpen, "Quitar marca especial"]];
+
+  return (
+    <aside className="rounded-xl border border-black/10 bg-white p-5 shadow-sm">
+      <h3 className="text-lg font-semibold text-marca">Estacionamiento {puesto.numero}</h3>
+      <p className="text-xs text-marca-gris">
+        Subterráneo {puesto.piso} · {tipo}
+        {puesto.dueno ? ` · dueño: ${puesto.dueno}` : ""}
+      </p>
+      <p className="mt-0.5 text-xs text-marca-gris">Hoy: {hoy}</p>
+
+      <div className="mt-4 space-y-2">
+        {acciones.map(([Icono, texto]) => (
+          <button
+            key={texto}
+            onClick={() =>
+              setAbierto(
+                texto === "Liberar" ? "Liberar"
+                : texto.startsWith("Dueño") ? "Dueño"
+                : texto === "Quitar dueño" || texto === "Pasar a variable" ? "Variable"
+                : texto === "Marcar como especial" ? "Especial"
+                : texto === "Pasar a fijo" ? "Fijo"
+                : texto === "Asignar por un periodo" ? "Asignar"
+                : texto === "Quitar marca especial" ? "QuitarEspecial"
+                : null,
+              )
+            }
+            className="flex w-full items-center gap-2 rounded-md border border-black/10 px-3 py-2 text-left text-sm text-marca hover:bg-marca/5"
+          >
+            <Icono size={16} className="shrink-0 text-marca-gris" />
+            <span className="truncate">{texto}</span>
+          </button>
+        ))}
+      </div>
+
+      {abierto === "Liberar" && (
+        <FormLiberar
+          hoy={fechaHoy}
+          personas={disponibles}
+          onCancelar={() => setAbierto(null)}
+          onGuardar={(l) => {
+            onLiberar(l);
+            setAbierto(null);
+          }}
+        />
+      )}
+
+      {abierto === "Dueño" && (
+        <FormDueno
+          actual={puesto.dueno}
+          disponibles={disponibles}
+          programado={programado}
+          onCancelar={() => setAbierto(null)}
+          onConfirmar={(nuevo) => {
+            onCambiarDueno(nuevo);
+            setAbierto(null);
+          }}
+        />
+      )}
+
+      {/* "Asignar por un periodo": fechas desde–hasta y una persona sin fijo */}
+      {abierto === "Asignar" && (
+        <FormLiberar
+          soloAsignar
+          hoy={fechaHoy}
+          personas={disponibles}
+          onCancelar={() => setAbierto(null)}
+          onGuardar={(l) => {
+            onAsignar({ desde: l.desde, hasta: l.hasta!, persona: l.para! });
+            setAbierto(null);
+          }}
+        />
+      )}
+
+      {/* "Pasar a fijo" (variables): elegir dueño o "Aún sin asignar"; se borra lo programado */}
+      {abierto === "Fijo" && (
+        <FormDueno
+          pasarAFijo
+          actual={null}
+          disponibles={disponibles}
+          programado={programado}
+          onCancelar={() => setAbierto(null)}
+          onConfirmar={(dueno) => {
+            onPasarAFijo(dueno);
+            setAbierto(null);
+          }}
+        />
+      )}
+
+      {/* "Quitar dueño" / "Pasar a variable": el puesto queda variable y se borra lo programado */}
+      {abierto === "Variable" && (
+        <Confirmacion
+          titulo={puesto.dueno ? "Quitar dueño" : "Pasar a variable"}
+          texto={`El ${puesto.numero} pasará a ser variable${puesto.dueno ? ` y ${puesto.dueno} quedará sin puesto fijo` : ""}.`}
+          programado={programado}
+          onCancelar={() => setAbierto(null)}
+          onConfirmar={() => {
+            onPasarAVariable();
+            setAbierto(null);
+          }}
+        />
+      )}
+
+      {/* "Marcar como especial": se escribe el uso (ej. Visitas); no rota ni se puede tomar */}
+      {abierto === "Especial" && (
+        <Confirmacion
+          titulo="Marcar como especial"
+          texto={`El ${puesto.numero} no entrará en la rotación y nadie lo podrá tomar.`}
+          programado={programado}
+          puedeConfirmar={nombreEspecial.trim() !== ""}
+          onCancelar={() => setAbierto(null)}
+          onConfirmar={() => {
+            onMarcarEspecial(nombreEspecial.trim());
+            setAbierto(null);
+          }}
+        >
+          <label className="block text-xs text-marca">
+            ¿Para qué es?
+            <input
+              value={nombreEspecial}
+              onChange={(e) => setNombreEspecial(e.target.value)}
+              placeholder="Visitas, Gerencia, Bicicletas…"
+              className="mt-1 w-full rounded-md border border-black/10 px-2 py-1.5 text-sm text-marca"
+            />
+          </label>
+        </Confirmacion>
+      )}
+
+      {/* "Quitar marca especial": vuelve a ser variable */}
+      {abierto === "QuitarEspecial" && (
+        <Confirmacion
+          titulo="Quitar marca especial"
+          texto={`El ${puesto.numero} dejará de ser "${puesto.especial}" y pasará a ser variable.`}
+          programado={programado}
+          onCancelar={() => setAbierto(null)}
+          onConfirmar={() => {
+            onQuitarEspecial();
+            setAbierto(null);
+          }}
+        />
+      )}
+
+      <h4 className="mt-5 text-sm font-semibold text-marca">Programado</h4>
+      {programado.length === 0 ? (
+        <p className="mt-1 text-xs text-marca-gris">Nada programado</p>
+      ) : (
+        <ul className="mt-2 space-y-1.5">
+          {programado.map((p) => (
+            <li key={p.clave} className="flex items-center justify-between gap-2 rounded-md border border-black/10 px-3 py-1.5 text-xs text-marca">
+              <span>{p.texto}</span>
+              <button onClick={() => onQuitar(p.clave)} className="shrink-0 text-marca-gris hover:text-rose-600" aria-label="Cancelar">
+                <X size={14} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </aside>
+  );
+}
+
+// Recuadro de confirmación: título, explicación, aviso de lo que se borrará y botones.
+function Confirmacion(props: {
+  titulo: string;
+  texto: string;
+  programado: Programado[];
+  puedeConfirmar?: boolean;
+  onCancelar: () => void;
+  onConfirmar: () => void;
+  children?: React.ReactNode;
+}) {
+  const { titulo, texto, programado, puedeConfirmar = true, onCancelar, onConfirmar, children } = props;
+  return (
+    <div className="mt-4 space-y-3 rounded-lg border border-acento/40 bg-acento/5 p-3">
+      <p className="text-sm font-semibold text-marca">{titulo}</p>
+      <p className="text-xs text-marca-gris">{texto}</p>
+      {children}
+      {programado.length > 0 && (
+        <div className="rounded-md bg-amber-100 p-2 text-xs text-amber-950">
+          Se borrará lo programado:
+          <ul className="mt-1 list-disc pl-4">
+            {programado.map((p) => (
+              <li key={p.clave}>{p.texto}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      <div className="flex gap-2">
+        <button onClick={onCancelar} className="flex-1 rounded-md border border-black/10 bg-white px-3 py-2 text-sm text-marca">
+          Cancelar
+        </button>
+        <button
+          onClick={() => puedeConfirmar && onConfirmar()}
+          disabled={!puedeConfirmar}
+          className="flex-1 rounded-md bg-acento px-3 py-2 text-sm font-semibold text-white disabled:opacity-40"
+        >
+          Confirmar
+        </button>
+      </div>
+    </div>
+  );
+}

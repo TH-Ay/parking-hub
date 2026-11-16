@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+/* Colores de marca The House Advisory (tomados del logo) */
+:root {
+  --background: #f5f6f4; /* hueso: fondo general */
+  --foreground: #052a3a; /* petróleo: texto */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-marca: #052a3a; /* petróleo: principal */
+  --color-marca-gris: #8397a0; /* gris azulado: secundario */
+  --color-acento: #13a699; /* turquesa: destacados */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+}

@@ -1,0 +1,105 @@
+@AGENTS.md
+
+# App de Estacionamientos TheHouse (parking-hub)
+
+## Cómo trabajar con la usuaria
+- No sabe programar: explicar en español simple, con analogías, e instrucciones exactas (clic aquí, pega esto allá) para todo lo que sea fuera del código (Supabase, Vercel, GitHub).
+- Metodología LEAN: un paso pequeño a la vez. Antes de programar algo complejo, explicar la lógica en español simple y esperar su OK.
+- Ahorro de tokens: NUNCA leer ni indexar node_modules/, .next/, .git/ ni .claude/ (excepción: la guía puntual de Next en node_modules/next/dist/docs/ si hace falta). Trabajar solo en app/, components/, lib/ y supabase/. Ediciones puntuales, sin reescribir archivos completos.
+- Mantener mapa.txt en la raíz: una línea por archivo creado (sin node_modules). Actualizarlo al crear o mover archivos.
+- Al terminar cada paso: decir qué se logró y cuál es el siguiente micro-paso.
+- Windows. Carpeta: Documents\parking-hub.
+
+## Privacidad (desde el minuto cero)
+- Nombres reales del equipo: viven en Supabase (tabla personas, con RLS y login ACTIVO). Nunca copiarlos a archivos del repo, a mapa.txt, a commits ni a servicios externos.
+- components/estacionamientos/personas.local.ts (ignorado por Git) YA NO SE USA desde el 16-nov-2026: ningún archivo lo importa, así el build en Vercel no depende de él. Se puede borrar.
+
+## Stack
+Next.js 16 (App Router, TypeScript) + Tailwind 4 + Supabase (@supabase/ssr). Luego: GitHub (repo nuevo en la cuenta de la empresa) + Vercel.
+- Clientes Supabase: lib/supabase/client.ts (navegador) y lib/supabase/server.ts (servidor).
+- Variables en .env.local (no se sube a GitHub); plantilla en .env.example.
+- En Next 16 el antiguo "middleware" se llama "proxy" (proxy.ts).
+
+## Negocio (MVP)
+- 20 estacionamientos con número: 142, 143, 148, 150, 152, 212 (-3), 302-311, 314, 331, 334, 335.
+- Pisos: 142–152 y 212 en subterráneo -3; 302–335 en -4.
+- Diseño: menú lateral blanco con logo (public/logo.png); páginas Estacionamientos, Disponibilidad, Personas (contenido lo define la usuaria). Colores en app/globals.css: marca #052a3a, marca-gris #8397a0, acento #13a699. Íconos: lucide-react.
+- Cada estacionamiento tiene un dueño. Si el dueño no va, lo LIBERA por uno o más días y otra persona lo puede TOMAR (gana el primero). También se puede SOLTAR uno tomado.
+- Reservas por día completo. Máximo 2 días calendario seguidos por persona.
+- Roles: admin (gestiona usuarios, asigna dueños, marca cada estacionamiento como fijo o variable) y usuario (libera, toma, suelta).
+- Login con enlace mágico, solo correos @thehouse.cl.
+- Qué ve cada rol (decidido 16-nov-2026): USUARIO solo ve "Disponibilidad" en el menú y NO puede entrar a Estacionamientos ni Personas: proxy.ts lo redirige a /disponibilidad (cambio pedido 16-nov-2026; antes se veían bloqueadas). Respaldo: SoloAdmin en lib/rol.tsx oculta el contenido. ADMIN ve y usa todo. Inicio "/": admin → /estacionamientos, usuario → /disponibilidad (lo hace proxy.ts). El rol se lee en app/(app)/layout.tsx. La protección real es el RLS de Supabase.
+- Fuera del MVP: notificaciones, reportes, visitas.
+- REINICIO (13-nov-2026): la usuaria pidió partir de cero. La página Estacionamientos es SOLO un plano demostrativo (número, piso, nombre de ejemplo por puesto), sin reglas, ventanas ni fechas. Las reglas de uso (fijo/variable, liberar, rotación) se vuelven a definir con ella antes de programarlas. Referencia: su planilla tiene dueño permanente por puesto + rotación mensual + casos como "disponible todos los viernes" y 307 = Visitas.
+
+## Flujo del ADMIN — vista Estacionamientos es solo del admin (CONECTADA a Supabase el 16-nov-2026)
+- Datos: page.tsx lee estacionamientos + personas + periodos y los convierte al formato Puesto (datosPrueba.ts). Acciones en accionesBD.ts; luego router.refresh(). La ✕ de "Programado" = terminar antes (si ya empezó, hasta = ayer; si no, se borra).
+- FIJO: (1) Dueño: elegir persona o "aún sin asignar" (asignar = cambiar, mismo control). La lista muestra solo personas sin fijo + "Aún sin asignar"; se elige y se confirma. Al cambiar de dueño se BORRA todo lo programado del puesto (la app avisa antes qué se borrará); (2) Quitar dueño → pasa a variable; (3) Liberar (UNA sola acción, decidido 16-nov-2026): cuándo = rango de fechas / sin fecha de término / repetir cada semana; para quién = "cualquiera" (lo toma el primero, día a día) o "una persona" (asignación/rotación, ideal mes entero). El dueño conserva su puesto.
+- VARIABLE: (1) Pasar a fijo (con dueño o "aún sin asignar"); (2) Asignar a una persona por un periodo; (3) Marcar como especial (ej. 307 Visitas, no se rota).
+- En ambos: lista de lo programado con ✕ para cancelar/terminar antes (ej. dueño vuelve del postnatal).
+- "Fijo aún sin dueño": solo lo ve el admin; los usuarios NO lo ven ni lo pueden tomar (queda bloqueado hasta asignarle dueño).
+- Liberar en esta vista: solo admin. Los usuarios liberarán su propio fijo y tomarán disponibles en OTRAS vistas.
+- El límite de 2 días seguidos aplica SOLO cuando un usuario toma un puesto (no a lo que asigna el admin).
+- Opciones del usuario al liberar su fijo y anticipación para tomar: se definen en la etapa de vistas de usuario.
+- Máximo 1 fijo por persona.
+- Personas (decidido 16-nov-2026): el admin CARGA la lista del equipo (nombre + correo @thehouse.cl) antes de que inicien sesión; al entrar, la app las reconoce por el correo.
+- BD propuesta (pendiente de escribir): una tabla "periodos" (puesto, desde, hasta|null, dia_semana|null, para_id|null = cualquiera, motivo) que sirve como liberación en fijos y asignación en variables; tipo 'especial' + uso; reservas sigue igual. Al terminar un periodo, el puesto vuelve solo a lo normal.
+- Si el dueño vuelve antes (ej. postnatal), el DUEÑO tiene prioridad: al terminar su liberación se cancelan las asignaciones/rotación de esos días restantes (la app debe avisarle al admin a quién se le quita).
+- Impedir: dos asignaciones el mismo puesto+día; una persona con dos puestos el mismo día.
+- Casos reales que debe cubrir: fijo todo el año; ausencias cortas (vacaciones, viaje, un día); persona se va de la empresa; pre/postnatal sin fecha de vuelta; libres por meses → rotación mensual.
+
+## Vista USUARIO (Disponibilidad) — iteración 1 hecha en memoria
+- 2/3 izquierda: calendario de libres (Mes por defecto / Semana / Día), SOLO lunes a viernes. 1/3 derecha: "Lo tuyo" (lo que tiene tomado), separado por una línea.
+- Sin límite de anticipación para tomar. Tomar y soltar hechos (soltar agrupa días seguidos, con casillas por día).
+- "No voy" del dueño (decidido 16-nov-2026): opciones rango desde–hasta y "cada semana". El dueño puede RECUPERAR lo liberado aunque otra persona ya lo haya tomado → a esa persona le llega el mensaje "Al final sí voy" (CAMBIA la regla/trigger actual de la BD que lo impedía).
+- CONECTADA a Supabase (16-nov-2026): tomar = insert en reservas; soltar = delete; "No voy" = insert en periodos (para_id null); recuperar = periodo termina ayer o se borra (la BD avisa "Al final sí voy"); avisos se marcan leído. "Lo tuyo" muestra el panel del dueño si la persona tiene fijo. El interruptor "Ver como" YA SE QUITÓ.
+
+## Vista PERSONAS (decidido 16-nov-2026) — SOLO admin
+- Lista del equipo: nombre, correo, rol, puesto fijo, estado (Activa / Aún no entra). Buscador + filtros (Con fijo, Sin fijo, Admins). CONECTADA a Supabase.
+- Puesto fijo editable desde la ventana de la persona (cambio pedido 16-nov-2026): lista = su puesto actual + puestos sin dueño (variables o fijos sin dueño; nunca especiales). El anterior queda variable sin dueño; se borra lo programado de ambos (trigger). Quitarle el puesto a OTRA persona: solo desde Estacionamientos.
+- Acciones: agregar (de a una, correo @thehouse.cl), editar (nombre, correo, rol), dar de baja (avisa si era dueño → puesto queda sin dueño; se borran sus reservas futuras).
+- Ficha por persona: para después.
+
+## ROTACIÓN / LISTA DE ESPERA (diseño acordado 16-nov-2026)
+- Avance: PASO 1 hecho = recuadro plegable "Lista de espera" en la columna derecha del Plano (opción B; si no convence, probar pestaña aparte = opción A) + supabase/migracion_v2_1.sql (lista_espera, ajustes, periodos.origen). PASO 2 hecho = botón "Correr / programar rotación" que abre EditorRotacion: el admin elige Desde/Hasta (generales o por puesto) y la persona de cada puesto (o "nadie"), y confirma → public.asignar_rotacion(p_items) (supabase/migracion_v2_3.sql). correr_rotacion() arma la propuesta por defecto (para el automático). PASO 3 = pg_cron (supabase/cron_rotacion.sql): tarea 'rotacion-diaria', lunes a viernes 10:00 UTC (7:00 Chile verano / 6:00 invierno) → correr_rotacion(). Requiere activar la extensión pg_cron en Supabase. ⏸️ EN PAUSA (16-nov-2026): el SQL está escrito pero NO se ha activado; mientras tanto la rotación se corre a mano con "Elegir personas y fechas". Paso siguiente: 4) regla del 50%.
+- Lista de espera ordenada (solo la ve el admin): personas sin fijo. Admin agrega, quita, reordena (↑↓) y puede marcar "saltar el próximo turno" (conserva su lugar). Quien recibe fijo o es dado de baja sale solo de la lista.
+- "Libre para rotar" = fijo liberado para cualquiera SIN fecha de término o por AL MENOS 1 MES desde hoy, o variable sin nadie asignado. Lo más corto queda "para cualquiera" día a día (MVP: sin otros umbrales).
+- Automático: cada mañana de día hábil (lunes a viernes) la BD revisa; cada puesto libre para rotar sin asignar se le da al PRIMERO de la lista por UN MES (desde hoy hasta el día anterior del mes siguiente, ej. 15-11 → 14-12) y esa persona pasa al FINAL. La lista corre también a mitad de mes.
+- Si a esa persona le toca la rotación y tenía tomados días sueltos de otro puesto en ese periodo → se le liberan (quedan para cualquiera) y recibe aviso.
+- Si OTRA persona había tomado un día suelto del puesto que entra a rotación → gana la rotación: se le cancela ese día con aviso.
+- Dueño vuelve antes (recupera): la asignación se corta; si la persona usó MENOS del 50% de los días hábiles del mes → vuelve al PRIMER lugar; si 50% o más → queda al final. El 50% es un ajuste editable por el admin.
+- Avisos: a la persona ("Te tocó el 142 del … al …") y al admin (resumen de lo asignado). El admin corrige a mano si algo no le convence.
+
+- En Disponibilidad → "Lo tuyo", la persona ve "Te toca el X por rotación" (En curso / Próximamente) durante todo el periodo (CajonRotacion).
+- PRÓXIMA ITERACIÓN: enviar CORREO a la persona cuando le toca la rotación (hoy solo aviso dentro de la app).
+
+## Pendiente para más adelante (pedido 16-nov-2026)
+- Vista general del ADMIN (en Estacionamientos): calendario semanal / mensual / anual para ver la situación: puestos libres sin usar, fijos sin dueño, etc. Definir con la usuaria después de la vista Disponibilidad.
+
+## Supabase v2 (escrita 16-nov-2026 en supabase/migracion_v2.sql; la aplica la usuaria en el SQL Editor)
+- personas (reemplaza profiles): la carga el admin; user_id se une al iniciar sesión por correo. Correo fuera de la lista → NO entra (decidido: opción 1). activa=false = dada de baja.
+- estacionamientos: numero, piso, tipo fijo|variable|especial, dueno_id único (1 fijo por persona), uso_especial. Parten todos "variable" salvo 307 = Visitas.
+- periodos (reemplaza liberaciones): desde, hasta|null, dia_semana 1-5|null, para_id|null (null = cualquiera), motivo.
+- reservas (persona_id, fecha) y avisos (persona_id, texto, leido).
+- Triggers: validar_reserva, validar_periodo, al_recuperar (avisos "Al final sí voy"), al_cambiar_puesto, al_dar_de_baja. Funciones: mi_persona_id(), es_admin(), libre_para_tomar(), tiene_puesto().
+- La primera admin se carga con un SQL aparte que NO se guarda en el repo (tiene su correo).
+- Lo de abajo describe la v1 (referencia histórica en supabase/schema.sql).
+
+## Supabase v1 (YA CREADO, no recrear)
+Proyecto "Gestión estacionamientos". Tablas en public:
+- profiles (id = auth.users.id, email, nombre, rol 'admin'|'usuario'). Se crea sola con trigger al registrarse; rechaza correos que no son @thehouse.cl.
+- estacionamientos (id, numero text, tipo 'fijo'|'variable', dueno_id → profiles).
+- liberaciones (estacionamiento_id, fecha), única por estacionamiento y fecha.
+- reservas (estacionamiento_id, usuario_id, fecha), única por estacionamiento+fecha y por usuario+fecha.
+Triggers que ya validan en la BD: solo se puede tomar si es variable, no tiene dueño o fue liberado ese día; máximo 2 días seguidos; no fechas pasadas (hora de Chile); el dueño no puede recuperar su estacionamiento si otra persona ya lo tomó (⚠️ esta última regla CAMBIA: ahora sí puede, y se avisa "Al final sí voy" a quien lo tenía). Los errores llegan en español: mostrarlos tal cual al usuario.
+RLS activo: todos los logueados leen; cada uno inserta y borra solo lo suyo; el admin puede todo (función public.es_admin()).
+
+## Plan
+1. Base de datos ✅
+2a. App base + conexión a Supabase + CLAUDE.md + mapa.txt ✅
+2b. Login con enlace mágico (redirigir a /login si no hay sesión) ✅ — ENCENDIDO de nuevo el 16-nov-2026 (LOGIN_ACTIVO = true en proxy.ts). El portero además cierra la sesión si la persona no está en "personas" o fue dada de baja (→ /login?error=lista).
+3. Vista del día (estado de cada estacionamiento: libre/ocupado)  ← SIGUIENTE
+   Ojo: next.config tiene cacheComponents: true → lo que lee sesión/BD va dentro de <Suspense> (createClient del servidor ya llama connection()). No usar redirect() en páginas estáticas: usar redirects en next.config.ts.
+4. Botones liberar / tomar / soltar
+5. Panel admin
+6. GitHub + Vercel
