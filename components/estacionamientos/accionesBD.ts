@@ -24,6 +24,7 @@ export function accionesBD(personas: PersonaBD[]) {
           dia_semana: l.cadaDia ?? null,
           para_id: idDe(l.para),
           motivo: l.motivo ?? null,
+          para_todos: l.paraTodos ?? false,
         }),
       ),
 

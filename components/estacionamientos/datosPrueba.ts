@@ -6,7 +6,8 @@ import { diaSemana, fechaCorta } from "./fechas";
 
 // hasta null = sin fecha de término; cadaDia = se repite ese día de la semana; para = persona elegida (sin "para" = cualquiera lo toma)
 // id = id del periodo en Supabase (no existe en los datos de ejemplo)
-export type Liberacion = { id?: number; desde: string; hasta: string | null; cadaDia?: number; motivo?: string; para?: string };
+// paraTodos = el admin dijo que una liberación larga la puede tomar cualquiera (no va a la rotación)
+export type Liberacion = { id?: number; desde: string; hasta: string | null; cadaDia?: number; motivo?: string; para?: string; paraTodos?: boolean };
 export type Asignacion = { id?: number; desde: string; hasta: string; persona: string };
 
 export type Puesto = {
@@ -43,6 +44,23 @@ export function estadoEn(p: Puesto, fecha: string): EstadoDelDia {
   if (paraAlguien) return { zona: "rotacion", quien: paraAlguien.para!, deQuien: p.dueno! };
   if (libs.length) return { zona: "libres", quien: null, deQuien: p.dueno! };
   return { zona: "fijos", quien: p.dueno };
+}
+
+// ¿Liberación "larga"? = sin fecha de término o de un mes o más (y no "cada semana")
+export function esLarga(l: Liberacion): boolean {
+  if (l.cadaDia !== undefined) return false;
+  if (l.hasta === null) return true;
+  const [a, m, d] = l.desde.split("-").map(Number);
+  const finMes = new Date(a, m, d - 1, 12).toLocaleDateString("en-CA"); // desde + 1 mes - 1 día
+  return l.hasta >= finMes;
+}
+
+// ¿Ese día el puesto está reservado para la rotación (lista de espera)? Misma regla que es_de_rotacion en Supabase:
+// libre, sin nadie asignado, y es variable o un fijo liberado "para cualquiera" con una liberación larga (sin marca paraTodos).
+export function esDeRotacion(p: Puesto, fecha: string): boolean {
+  if (estadoEn(p, fecha).zona !== "libres") return false;
+  if (p.tipo === "variable") return true;
+  return p.liberaciones.some((l) => !l.para && !l.paraTodos && liberadoEn(l, fecha) && esLarga(l));
 }
 
 // Lista "Programado" (desde hoy en adelante). "clave" identifica qué borrar con la ✕.

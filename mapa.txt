@@ -10,6 +10,7 @@ components/estacionamientos/ListaEspera.tsx - recuadro plegable: lista de espera
 components/estacionamientos/EditorRotacion.tsx - editar fecha/persona/fechas antes de asignar rotación
 supabase/migracion_v2_3.sql - asignar_rotacion(propuesta editada) + correr_rotacion
 supabase/cron_rotacion.sql - pg_cron: corre la rotación lunes a viernes 10:00 UTC
+supabase/migracion_v2_4.sql - puestos de rotación reservados (no se toman día a día)
 .env.local - variables reales de Supabase (NO se sube a GitHub)
 package.json - dependencias y comandos (npm run dev)
 app/layout.tsx - marco común de todas las páginas

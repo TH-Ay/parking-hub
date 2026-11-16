@@ -11,6 +11,7 @@
 - Windows. Carpeta: Documents\parking-hub.
 
 ## Privacidad (desde el minuto cero)
+- El repo TH-Ay/parking-hub es PÚBLICO (16-nov-2026, para Vercel gratis). Ese día se reemplazó su historial por una sola versión limpia (había un nombre real en un comentario antiguo). El historial antiguo quedó SOLO en la rama local "respaldo-historial": NUNCA subirla (git push solo de main).
 - Nombres reales del equipo: viven en Supabase (tabla personas, con RLS y login ACTIVO). Nunca copiarlos a archivos del repo, a mapa.txt, a commits ni a servicios externos.
 - components/estacionamientos/personas.local.ts (ignorado por Git) YA NO SE USA desde el 16-nov-2026: ningún archivo lo importa, así el build en Vercel no depende de él. Se puede borrar.
 
@@ -70,6 +71,7 @@ Next.js 16 (App Router, TypeScript) + Tailwind 4 + Supabase (@supabase/ssr). Lue
 - Dueño vuelve antes (recupera): la asignación se corta; si la persona usó MENOS del 50% de los días hábiles del mes → vuelve al PRIMER lugar; si 50% o más → queda al final. El 50% es un ajuste editable por el admin.
 - Avisos: a la persona ("Te tocó el 142 del … al …") y al admin (resumen de lo asignado). El admin corrige a mano si algo no le convence.
 
+- RESERVADOS PARA ROTACIÓN (16-nov-2026, migracion_v2_4.sql): un puesto "de rotación" (fijo con liberación para cualquiera sin término o de 1 mes o más, sin "cada semana"; o variable sin asignar) NO se toma día a día: no aparece en Disponibilidad y la BD lo impide (es_de_rotacion en validar_reserva). Excepción: el admin marca al liberar "Que cualquiera lo pueda tomar día a día" (periodos.para_todos = true). En el plano se ven en Libres con etiqueta "Para rotación". Regla compartida en la app: esDeRotacion() en datosPrueba.ts.
 - En Disponibilidad → "Lo tuyo", la persona ve "Te toca el X por rotación" (En curso / Próximamente) durante todo el periodo (CajonRotacion).
 - PRÓXIMA ITERACIÓN: enviar CORREO a la persona cuando le toca la rotación (hoy solo aviso dentro de la app).
 
@@ -102,4 +104,5 @@ RLS activo: todos los logueados leen; cada uno inserta y borra solo lo suyo; el 
    Ojo: next.config tiene cacheComponents: true → lo que lee sesión/BD va dentro de <Suspense> (createClient del servidor ya llama connection()). No usar redirect() en páginas estáticas: usar redirects en next.config.ts.
 4. Botones liberar / tomar / soltar
 5. Panel admin
-6. GitHub + Vercel
+6. GitHub + Vercel ✅ (16-nov-2026) — Vercel (plan Hobby, equipo "TheHouse Advisory's projects", proyecto "parking-hub") despliega solo cada push a main de TH-Ay/parking-hub (público). Variables en Vercel: NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY. En Supabase → Authentication → URL Configuration: Site URL = dirección de Vercel; Redirect URLs = Vercel/** y http://localhost:3000/**.
+7. SIGUIENTE: correo para el enlace mágico (SMTP propio: Gmail dedicado con contraseña de aplicación) y subir el límite de correos por hora en Supabase. Luego: revisar la versión en el teléfono.

@@ -10,7 +10,7 @@ export async function leerPuestos(supabase: SupabaseClient) {
   const [{ data: ests, error }, { data: personas }, { data: periodos }] = await Promise.all([
     supabase.from("estacionamientos").select("id, numero, piso, tipo, dueno_id, uso_especial").order("numero"),
     supabase.from("personas").select("id, nombre").eq("activa", true).order("nombre"),
-    supabase.from("periodos").select("id, estacionamiento_id, desde, hasta, dia_semana, para_id, motivo").order("desde"),
+    supabase.from("periodos").select("id, estacionamiento_id, desde, hasta, dia_semana, para_id, motivo, para_todos").order("desde"),
   ]);
   if (error || !ests) return null;
 
@@ -32,6 +32,7 @@ export async function leerPuestos(supabase: SupabaseClient) {
           cadaDia: p.dia_semana ?? undefined,
           motivo: p.motivo ?? undefined,
           para: nombreDe(p.para_id) ?? undefined,
+          paraTodos: p.para_todos ?? false,
         });
       }
     }

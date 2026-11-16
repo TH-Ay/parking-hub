@@ -10,7 +10,7 @@ import PanelDueno, { type Afectado } from "./PanelDueno";
 import CalendarioDisponibles, { type Libre, type Propio } from "./CalendarioDisponibles";
 import AutoCenital from "@/components/estacionamientos/AutoCenital";
 import { ASFALTO } from "@/components/estacionamientos/asfalto";
-import { estadoEn, liberadoEn, type Liberacion, type Puesto } from "@/components/estacionamientos/datosPrueba";
+import { esDeRotacion, estadoEn, liberadoEn, type Liberacion, type Puesto } from "@/components/estacionamientos/datosPrueba";
 import { fechaTexto, hoyEnChile, sumarDias } from "@/components/estacionamientos/fechas";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/errores";
@@ -174,6 +174,7 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
     puestos
       .map((p) => ({ puesto: p, estado: estadoEn(p, fecha) }))
       .filter(({ puesto, estado }) => estado.zona === "libres" && puesto.numero !== miFijo && !tomadoPor(puesto.numero, fecha))
+      .filter(({ puesto }) => !esDeRotacion(puesto, fecha)) // reservados para la lista de espera: no se toman día a día
       .map(({ puesto, estado }) => ({ puesto, deQuien: estado.deQuien }));
 
   // Mi puesto fijo en los días que lo liberé (turquesa, no se puede tomar)

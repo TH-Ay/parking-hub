@@ -12,7 +12,7 @@ import CalendarioAdmin from "./CalendarioAdmin";
 import { fechaTexto, hoyEnChile, sumarDias, sumarUnMes } from "./fechas";
 import ListaEspera, { type EnLista } from "./ListaEspera";
 import { accionesBD, type PersonaBD } from "./accionesBD";
-import { estadoEn, programadoDe, type Asignacion, type Liberacion, type Puesto, type Zona } from "./datosPrueba";
+import { esDeRotacion, estadoEn, programadoDe, type Asignacion, type Liberacion, type Puesto, type Zona } from "./datosPrueba";
 
 const sinSuscripcion = () => () => {};
 
@@ -27,7 +27,9 @@ function libreParaRotar(p: Puesto, fecha: string) {
   if (p.asignaciones.some((a) => choca(a.desde, a.hasta)) || p.liberaciones.some((l) => l.para && choca(l.desde, l.hasta))) return false;
   if (p.tipo === "variable") return true;
   if (!p.dueno) return false;
-  return p.liberaciones.some((l) => !l.para && l.cadaDia === undefined && l.desde <= fecha && (l.hasta === null || l.hasta >= finMes));
+  return p.liberaciones.some(
+    (l) => !l.para && !l.paraTodos && l.cadaDia === undefined && l.desde <= fecha && (l.hasta === null || l.hasta >= finMes),
+  );
 }
 
 export default function PlanoEstacionamientos(props: Props) {
@@ -240,6 +242,7 @@ function Plano({ hoy, puestos, personas, listaEspera }: Props & { hoy: string })
                     elegido={puesto.numero === elegido}
                     onElegir={() => setElegido(puesto.numero)}
                     escondido={viaje?.numero === puesto.numero}
+                    paraRotacion={esDeRotacion(puesto, hoy)}
                   />
                 ))}
               </ZonaEstacionamiento>

@@ -3,7 +3,7 @@
 // Para quién: cualquiera (lo toma el primero) o una persona elegida por el admin.
 import { useState } from "react";
 // Con soloAsignar = true sirve para "Asignar por un periodo" (variables): solo fechas y persona.
-import type { Liberacion } from "./datosPrueba";
+import { esLarga, type Liberacion } from "./datosPrueba";
 
 type Props = {
   hoy: string;
@@ -31,6 +31,10 @@ export default function FormLiberar({ hoy, personas, soloAsignar = false, paraDu
   const [dia, setDia] = useState(5); // viernes
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState("");
+  const [paraTodos, setParaTodos] = useState(false); // liberación larga que igual puede tomar cualquiera (no va a la rotación)
+  // La casilla solo aplica a liberaciones largas "para cualquiera" que hace el admin
+  const larga = forma === "sinFin" || (forma === "fechas" && esLarga({ desde, hasta }));
+  const muestraParaTodos = !soloAsignar && !paraDueno && para === "cualquiera" && larga;
 
   function guardar() {
     if (!desde || desde < hoy) return setError("La fecha de inicio no puede ser anterior a hoy.");
@@ -42,6 +46,7 @@ export default function FormLiberar({ hoy, personas, soloAsignar = false, paraDu
       cadaDia: forma === "semanal" ? dia : undefined,
       motivo: motivo.trim() || undefined,
       para: para === "persona" ? persona : undefined,
+      paraTodos: muestraParaTodos && paraTodos,
     });
   }
 
@@ -124,6 +129,17 @@ export default function FormLiberar({ hoy, personas, soloAsignar = false, paraDu
             <option key={n} value={n}>{n}</option>
           ))}
         </select>
+      )}
+
+      {/* Liberación larga para cualquiera: por defecto va a la rotación (lista de espera) */}
+      {muestraParaTodos && (
+        <label className="flex items-start gap-2 rounded-md bg-amber-50 p-2 text-xs text-amber-950">
+          <input type="checkbox" checked={paraTodos} onChange={(e) => setParaTodos(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#13a699]" />
+          <span>
+            Que cualquiera lo pueda tomar día a día (no va a la rotación).
+            <span className="block text-amber-800">Si no lo marcas, queda reservado para la lista de espera.</span>
+          </span>
+        </label>
       )}
 
       <label className="block text-xs text-marca">

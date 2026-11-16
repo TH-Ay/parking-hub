@@ -11,11 +11,12 @@ type Props = {
   elegido: boolean;
   onElegir: () => void;
   escondido?: boolean; // true mientras el autito maneja hacia este cajón
+  paraRotacion?: boolean; // libre, pero reservado para la lista de espera
 };
 
 const chip = "max-w-full truncate rounded bg-white px-1.5 py-0.5 text-[11px] font-semibold text-marca";
 
-export default function CajonEstacionamiento({ puesto, estado, elegido, onElegir, escondido = false }: Props) {
+export default function CajonEstacionamiento({ puesto, estado, elegido, onElegir, escondido = false, paraRotacion = false }: Props) {
   let centro;
   if (puesto.tipo === "especial") {
     centro = (
@@ -31,6 +32,10 @@ export default function CajonEstacionamiento({ puesto, estado, elegido, onElegir
         <span className="max-w-full truncate text-[11px] font-medium text-emerald-200">
           {estado.deQuien ? `de ${estado.deQuien}` : "Libre"}
         </span>
+        {/* Reservado para la lista de espera: nadie lo toma día a día */}
+        {paraRotacion && (
+          <span className="rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-amber-950">Para rotación</span>
+        )}
       </>
     );
   } else if (!estado.quien) {

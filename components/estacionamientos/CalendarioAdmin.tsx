@@ -3,7 +3,7 @@
 // Usa los mismos datos del plano: lo que el admin cambia allá se ve acá.
 import { useState } from "react";
 import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, CircleParking } from "lucide-react";
-import { estadoEn, type Puesto } from "./datosPrueba";
+import { esDeRotacion, estadoEn, type Puesto } from "./datosPrueba";
 import { diaSemana, esHabil, fechaTexto, habil, lunesDe, mesDe, sumarDias, sumarMeses } from "./fechas";
 
 type Vista = "semana" | "mes" | "anio";
@@ -20,6 +20,8 @@ function celdaDe(p: Puesto, f: string): Celda {
   const e = estadoEn(p, f);
   if (p.tipo === "especial") return { tipo: "especial", clase: "bg-slate-200 text-slate-700", texto: p.especial ?? "Especial", detalle: "Puesto especial" };
   if (e.zona === "rotacion") return { tipo: "rotacion", clase: "bg-amber-200 text-amber-950", texto: e.quien!, detalle: "Asignado / rotación" };
+  if (e.zona === "libres" && esDeRotacion(p, f))
+    return { tipo: "libre", clase: "border border-dashed border-amber-500 bg-amber-50 text-amber-900", texto: "Para rotación", detalle: "Reservado para la lista de espera" };
   if (e.zona === "libres")
     return { tipo: "libre", clase: "bg-emerald-200 text-emerald-950", texto: "Libre", detalle: e.deQuien ? `Libre (liberado por ${e.deQuien})` : "Libre (variable)" };
   if (!e.quien) return { tipo: "sinDueno", clase: "border border-dashed border-marca-gris bg-white text-marca-gris", texto: "Sin dueño", detalle: "Fijo sin dueño" };
