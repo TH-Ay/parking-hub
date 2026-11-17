@@ -25,6 +25,7 @@ Next.js 16 (App Router, TypeScript) + Tailwind 4 + Supabase (@supabase/ssr). Lue
 - 20 estacionamientos con número: 142, 143, 148, 150, 152, 212 (-3), 302-311, 314, 331, 334, 335.
 - Pisos: 142–152 y 212 en subterráneo -3; 302–335 en -4.
 - Teléfono (pedido 17-nov-2026): se ve IGUAL que en el computador, achicado. app/layout.tsx exporta viewport { width: 540, initialScale: undefined } + script (Script beforeInteractive) que pone initial-scale = ancho de pantalla ÷ 540. El diseño horizontal (menú a la izquierda, columnas lado a lado) se activa desde sm, que en app/globals.css se cambió a 540 px (@theme --breakpoint-sm: 33.75rem). Se probó 1024, 768 y 640: quedaba chico. Para volver a la versión adaptada al teléfono, borrar ese export.
+- Menú lateral PLEGABLE (17-nov-2026, components/Sidebar.tsx): plegado = solo íconos; por defecto plegado en teléfono/pantallas medianas y desplegado en computador (≥ 1024 px); el botón "Plegar" lo cambia y se recuerda en localStorage ("menu-lateral").
 - Diseño: menú lateral blanco con logo (public/logo.png); páginas Estacionamientos, Disponibilidad, Personas (contenido lo define la usuaria). Colores en app/globals.css: marca #052a3a, marca-gris #8397a0, acento #13a699. Íconos: lucide-react.
 - Cada estacionamiento tiene un dueño. Si el dueño no va, lo LIBERA por uno o más días y otra persona lo puede TOMAR (gana el primero). También se puede SOLTAR uno tomado.
 - Reservas por día completo. Máximo 2 días calendario seguidos por persona.
