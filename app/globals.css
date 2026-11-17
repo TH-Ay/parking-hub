@@ -21,3 +21,17 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Login: autitos que pasan por las calles (MarcoLogin.tsx). El dibujo del auto mira hacia arriba: se gira 90° */
+@keyframes manejar-derecha {
+  from { transform: translateX(-15vw) rotate(90deg); }
+  to { transform: translateX(115vw) rotate(90deg); }
+}
+@keyframes manejar-izquierda {
+  from { transform: translateX(115vw) rotate(-90deg); }
+  to { transform: translateX(-15vw) rotate(-90deg); }
+}
+/* Si la persona pidió menos movimiento en su computador, los autos no pasan */
+@media (prefers-reduced-motion: reduce) {
+  .auto-en-movimiento { display: none; }
+}

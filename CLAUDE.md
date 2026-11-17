@@ -24,11 +24,12 @@ Next.js 16 (App Router, TypeScript) + Tailwind 4 + Supabase (@supabase/ssr). Lue
 ## Negocio (MVP)
 - 20 estacionamientos con número: 142, 143, 148, 150, 152, 212 (-3), 302-311, 314, 331, 334, 335.
 - Pisos: 142–152 y 212 en subterráneo -3; 302–335 en -4.
+- Teléfono (pedido 17-nov-2026): se ve IGUAL que en el computador, achicado. app/layout.tsx exporta viewport { width: 1024, initialScale: undefined } → meta "width=1024" (el teléfono arma la página a 1024 px y la achica). Para volver a la versión adaptada al teléfono, borrar ese export.
 - Diseño: menú lateral blanco con logo (public/logo.png); páginas Estacionamientos, Disponibilidad, Personas (contenido lo define la usuaria). Colores en app/globals.css: marca #052a3a, marca-gris #8397a0, acento #13a699. Íconos: lucide-react.
 - Cada estacionamiento tiene un dueño. Si el dueño no va, lo LIBERA por uno o más días y otra persona lo puede TOMAR (gana el primero). También se puede SOLTAR uno tomado.
 - Reservas por día completo. Máximo 2 días calendario seguidos por persona.
 - Roles: admin (gestiona usuarios, asigna dueños, marca cada estacionamiento como fijo o variable) y usuario (libera, toma, suelta).
-- Login con enlace mágico, solo correos @thehouse.cl.
+- Login con CORREO Y CONTRASEÑA (cambio del 17-nov-2026; antes enlace mágico, que tenía el límite de correos de Supabase). Solo correos @thehouse.cl cargados en Personas pueden "Crear mi contraseña" (la BD rechaza los demás). Requiere en Supabase: Authentication → Email → "Confirm email" APAGADO. "Olvidé mi contraseña" envía correo (con límite) → /auth/callback?next=/nueva-clave. Plan B si no llega: el admin borra el usuario de login en Supabase (Authentication → Users) y la persona vuelve a crear su contraseña (sus datos no se pierden).
 - Qué ve cada rol (decidido 16-nov-2026): USUARIO solo ve "Disponibilidad" en el menú y NO puede entrar a Estacionamientos ni Personas: proxy.ts lo redirige a /disponibilidad (cambio pedido 16-nov-2026; antes se veían bloqueadas). Respaldo: SoloAdmin en lib/rol.tsx oculta el contenido. ADMIN ve y usa todo. Inicio "/": admin → /estacionamientos, usuario → /disponibilidad (lo hace proxy.ts). El rol se lee en app/(app)/layout.tsx. La protección real es el RLS de Supabase.
 - Fuera del MVP: notificaciones, reportes, visitas.
 - REINICIO (13-nov-2026): la usuaria pidió partir de cero. La página Estacionamientos es SOLO un plano demostrativo (número, piso, nombre de ejemplo por puesto), sin reglas, ventanas ni fechas. Las reglas de uso (fijo/variable, liberar, rotación) se vuelven a definir con ella antes de programarlas. Referencia: su planilla tiene dueño permanente por puesto + rotación mensual + casos como "disponible todos los viernes" y 307 = Visitas.
@@ -105,4 +106,4 @@ RLS activo: todos los logueados leen; cada uno inserta y borra solo lo suyo; el 
 4. Botones liberar / tomar / soltar
 5. Panel admin
 6. GitHub + Vercel ✅ (16-nov-2026) — Vercel (plan Hobby, equipo "TheHouse Advisory's projects", proyecto "parking-hub") despliega solo cada push a main de TH-Ay/parking-hub (público). Variables en Vercel: NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY. En Supabase → Authentication → URL Configuration: Site URL = dirección de Vercel; Redirect URLs = Vercel/** y http://localhost:3000/**.
-7. SIGUIENTE: correo para el enlace mágico (SMTP propio: Gmail dedicado con contraseña de aplicación) y subir el límite de correos por hora en Supabase. Luego: revisar la versión en el teléfono.
+7. Ingreso rápido del equipo ✅ (17-nov-2026): se cambió a correo + contraseña (Gmail como SMTP no resultó: Google no dejaba verificar la cuenta). SIGUIENTE: revisar la versión en el teléfono.

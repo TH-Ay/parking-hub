@@ -20,11 +20,13 @@ lib/supabase/server.ts - conexión a Supabase desde el servidor
 lib/rol.tsx - rol admin/usuario y bloqueo de páginas solo admin
 lib/errores.ts - traduce errores de Supabase a español
 proxy.ts - portero: sin sesión redirige a /login
-app/login/page.tsx - formulario para pedir enlace mágico
-app/auth/callback/route.ts - regreso del enlace: crea la sesión
+app/login/page.tsx - login: entrar / crear mi contraseña / olvidé mi contraseña
+app/nueva-clave/page.tsx - crear contraseña nueva (desde el correo de recuperación)
+app/auth/callback/route.ts - regreso de los correos de Supabase: crea la sesión
 app/auth/salir/route.ts - cerrar sesión
 public/logo.png - logo The House Advisory
 components/Sidebar.tsx - menú lateral con logo y páginas
+components/MarcoLogin.tsx - login al centro sobre estacionamiento con autos en movimiento
 app/(app)/layout.tsx - marco interno: menú lateral + contenido
 app/(app)/estacionamientos/page.tsx - página Estacionamientos: lee puestos y periodos de Supabase
 components/estacionamientos/accionesBD.ts - acciones del admin que guardan en Supabase
