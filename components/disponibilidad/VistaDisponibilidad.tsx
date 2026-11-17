@@ -231,7 +231,7 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
     <div className="space-y-6">
       {/* Título con letrero de estacionamiento (cuadrado azul con "P" blanca, como la señal de tránsito) */}
       <div className="flex items-center gap-3">
-        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border-2 border-white bg-blue-700 text-2xl font-black text-white shadow-md ring-1 ring-blue-900/30">
+        <span className="hidden h-11 w-11 lg:flex shrink-0 items-center justify-center rounded-lg border-2 border-white bg-blue-700 text-2xl font-black text-white shadow-md ring-1 ring-blue-900/30">
           P
         </span>
         <div>
@@ -240,9 +240,10 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3 sm:items-start lg:gap-6">
+      {/* Teléfono y pantallas medianas: "Lo tuyo" arriba y calendario abajo, a todo el ancho. Computador (lg): lado a lado */}
+      <div className="grid gap-3 lg:grid-cols-3 lg:items-start lg:gap-6">
         {/* Calendario (2/3) */}
-        <div className="sm:col-span-2">
+        <div className="lg:col-span-2">
           <CalendarioDisponibles
             hoy={hoy}
             libresEn={libresEn}
@@ -252,8 +253,8 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
         </div>
 
         {/* Lo tuyo (1/3); en celular va arriba. En pantalla grande, una línea lo separa del calendario */}
-        <div className="order-first sm:order-none sm:self-stretch sm:border-l sm:border-black/15 sm:pl-3 lg:pl-6">
-        <aside className="rounded-xl border border-black/10 bg-white p-3 shadow-sm sm:sticky sm:top-6 lg:p-5">
+        <div className="order-first lg:order-none lg:self-stretch lg:border-l lg:border-black/15 lg:pl-6">
+        <aside className="rounded-xl border border-black/10 bg-white p-3 shadow-sm lg:sticky lg:top-6 lg:p-5">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-marca">
             <Car size={20} className="text-acento" /> Lo tuyo
           </h2>
