@@ -19,22 +19,22 @@ export const metadata: Metadata = {
 };
 
 // En el teléfono la app se ve IGUAL que en el computador (pedido 17-nov-2026): la página se arma con
-// 1024 px de ancho y el teléfono la achica para que quepa (se puede hacer zoom con dos dedos).
+// 768 px de ancho (antes 1024: quedaba muy chico) y el teléfono la achica para que quepa (zoom con dos dedos).
 // Para volver a la versión adaptada al teléfono, borrar este bloque.
 export const viewport: Viewport = {
-  width: 1024,
+  width: 768,
   initialScale: undefined, // sin "initial-scale=1": así el teléfono achica la página para que quepa
 };
 
 // Plan B (17-nov-2026): apenas abre la página, se mide el ancho de la pantalla del teléfono y se le dice
-// EXACTAMENTE cuánto achicar (ej. 400 ÷ 1024 ≈ 0,39), para no depender de que el teléfono lo calcule solo.
-// Se repite al girar el teléfono. En pantallas de 1024 o más no hace nada.
+// EXACTAMENTE cuánto achicar (ej. 390 ÷ 768 ≈ 0,51), para no depender de que el teléfono lo calcule solo.
+// Se repite al girar el teléfono. En pantallas de 768 o más no hace nada.
 const ACHICAR_EN_TELEFONO = `(function () {
   function ajustar() {
     var ancho = window.screen.width;
-    if (!ancho || ancho >= 1024) return;
-    var escala = (ancho / 1024).toFixed(3);
-    var contenido = "width=1024, initial-scale=" + escala + ", minimum-scale=" + escala + ", maximum-scale=5";
+    if (!ancho || ancho >= 768) return;
+    var escala = (ancho / 768).toFixed(3);
+    var contenido = "width=768, initial-scale=" + escala + ", minimum-scale=" + escala + ", maximum-scale=5";
     var metas = document.querySelectorAll('meta[name="viewport"]');
     if (metas.length === 0) {
       var m = document.createElement("meta");

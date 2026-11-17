@@ -240,9 +240,9 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
+      <div className="grid gap-4 md:grid-cols-3 md:items-start lg:gap-6">
         {/* Calendario (2/3) */}
-        <div className="lg:col-span-2">
+        <div className="md:col-span-2">
           <CalendarioDisponibles
             hoy={hoy}
             libresEn={libresEn}
@@ -252,8 +252,8 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
         </div>
 
         {/* Lo tuyo (1/3); en celular va arriba. En pantalla grande, una línea lo separa del calendario */}
-        <div className="order-first lg:order-none lg:self-stretch lg:border-l lg:border-black/15 lg:pl-6">
-        <aside className="rounded-xl border border-black/10 bg-white p-5 shadow-sm lg:sticky lg:top-6">
+        <div className="order-first md:order-none md:self-stretch md:border-l md:border-black/15 md:pl-4 lg:pl-6">
+        <aside className="rounded-xl border border-black/10 bg-white p-4 shadow-sm md:sticky md:top-6 lg:p-5">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-marca">
             <Car size={20} className="text-acento" /> Lo tuyo
           </h2>

@@ -19,7 +19,7 @@ export default function Sidebar({ usuario, rol }: { usuario: string; rol: Rol })
   const visibles = paginas.filter((p) => rol === "admin" || !p.soloAdmin);
 
   return (
-    <aside className="flex flex-col gap-4 border-b border-black/10 bg-white p-4 md:sticky md:top-0 md:h-screen md:w-64 md:shrink-0 md:border-b-0 md:border-r">
+    <aside className="flex flex-col gap-4 border-b border-black/10 bg-white p-4 md:sticky md:top-0 md:h-screen md:w-48 md:shrink-0 lg:w-64 md:border-b-0 md:border-r">
       <div className="px-2">
         <Image src="/logo.png" alt="The House Advisory" width={160} height={43} priority className="h-auto" />
         <p className="mt-1 text-xs font-semibold tracking-[0.3em] text-acento">PARKING</p>
