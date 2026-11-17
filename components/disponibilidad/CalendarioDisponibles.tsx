@@ -51,17 +51,20 @@ export default function CalendarioDisponibles({ hoy, libresEn, onElegir, propioE
   };
 
   return (
-    <section className="overflow-hidden rounded-xl border border-black/10 bg-white p-5 shadow-sm">
+    <section className="overflow-hidden rounded-xl border border-black/10 bg-white p-3 shadow-sm lg:p-5">
       {/* Franja de barrera (amarilla y negra), como la entrada de un estacionamiento */}
-      <div className="-mx-5 -mt-5 mb-4 h-2.5" style={{ backgroundImage: "repeating-linear-gradient(45deg, #facc15 0 10px, #1f2328 10px 20px)" }} />
+      <div
+        className="-mx-3 -mt-3 mb-3 h-2.5 lg:-mx-5 lg:-mt-5 lg:mb-4"
+        style={{ backgroundImage: "repeating-linear-gradient(45deg, #facc15 0 10px, #1f2328 10px 20px)" }}
+      />
 
-      {/* Encabezado: título, flechas, "Hoy" y selector de vista */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
+      {/* Encabezado: título, flechas, "Hoy" y selector de vista (en pantallas angostas pasa a dos líneas) */}
+      <div className="flex flex-wrap items-center justify-between gap-2 lg:gap-3">
+        <div className="flex flex-wrap items-center gap-1 lg:gap-2">
           <button onClick={() => mover(-1)} className="rounded-md p-1.5 text-marca hover:bg-marca/5" aria-label="Anterior">
             <ChevronLeft size={18} />
           </button>
-          <h2 className="min-w-44 text-center text-lg font-semibold text-marca">{titulo}</h2>
+          <h2 className="text-center text-base font-semibold text-marca md:min-w-44 md:text-lg">{titulo}</h2>
           <button onClick={() => mover(1)} className="rounded-md p-1.5 text-marca hover:bg-marca/5" aria-label="Siguiente">
             <ChevronRight size={18} />
           </button>
@@ -122,7 +125,7 @@ function Pista({ pasada }: { pasada: Pasada | null }) {
   }, [pasada]);
 
   return (
-    <div className="relative -mx-5 -mb-5 mt-4 h-10 overflow-hidden" style={ASFALTO}>
+    <div className="relative -mx-3 -mb-3 mt-3 h-10 overflow-hidden lg:-mx-5 lg:-mb-5 lg:mt-4" style={ASFALTO}>
       <div className="absolute inset-x-0 top-1/2 border-t-2 border-dashed border-amber-300/80" />
       <div ref={auto} className="absolute left-0 top-1/2" style={{ transform: "translateX(-60px) translateY(-50%)" }}>
         <AutoCenital color="#13a699" className="h-8" />

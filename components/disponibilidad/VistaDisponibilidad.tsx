@@ -230,7 +230,7 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
   return (
     <div className="space-y-6">
       {/* Título con letrero de estacionamiento (cuadrado azul con "P" blanca, como la señal de tránsito) */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex items-center gap-3">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border-2 border-white bg-blue-700 text-2xl font-black text-white shadow-md ring-1 ring-blue-900/30">
           P
         </span>

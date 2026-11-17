@@ -20,9 +20,9 @@ export default function Sidebar({ usuario, rol }: { usuario: string; rol: Rol })
 
   return (
     // Desde 640 px (el teléfono arma la página a 640) el menú va a la izquierda; más angosto en pantallas medianas
-    <aside className="flex flex-col gap-4 border-b border-black/10 bg-white p-3 sm:sticky sm:top-0 sm:h-screen sm:w-40 sm:shrink-0 sm:border-b-0 sm:border-r md:w-48 lg:w-64 lg:p-4">
+    <aside className="flex flex-col gap-4 border-b border-black/10 bg-white p-3 sm:sticky sm:top-0 sm:h-screen sm:w-36 sm:shrink-0 sm:border-b-0 sm:border-r md:w-48 lg:w-64 lg:p-4">
       <div className="px-2">
-        <Image src="/logo.png" alt="The House Advisory" width={160} height={43} priority className="h-auto w-full max-w-40" />
+        <Image src="/logo.png" alt="The House Advisory" width={160} height={43} priority className="h-auto w-full max-w-32 lg:max-w-40" />
         <p className="mt-1 text-xs font-semibold tracking-[0.3em] text-acento">PARKING</p>
       </div>
 
@@ -33,7 +33,7 @@ export default function Sidebar({ usuario, rol }: { usuario: string; rol: Rol })
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-2 text-sm font-medium transition-colors lg:gap-3 lg:px-3 ${
+              className={`flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-2 text-xs font-medium transition-colors md:text-sm lg:gap-3 lg:px-3 ${
                 activa ? "bg-marca text-white" : "text-marca hover:bg-marca/5"
               }`}
             >
