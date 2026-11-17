@@ -3,14 +3,17 @@
 // Se usa desde el servidor (páginas), con el cliente de lib/supabase/server.ts.
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Asignacion, Liberacion, Puesto } from "@/components/estacionamientos/datosPrueba";
+import { hoyEnChile, sumarDias } from "@/components/estacionamientos/fechas";
 
 export type PersonaBD = { id: string; nombre: string };
 
 export async function leerPuestos(supabase: SupabaseClient) {
-  const [{ data: ests, error }, { data: personas }, { data: periodos }] = await Promise.all([
+  const haceUnAno = sumarDias(hoyEnChile(), -366); // reservas del último año (para el calendario del admin)
+  const [{ data: ests, error }, { data: personas }, { data: periodos }, { data: reservas }] = await Promise.all([
     supabase.from("estacionamientos").select("id, numero, piso, tipo, dueno_id, uso_especial").order("numero"),
     supabase.from("personas").select("id, nombre").eq("activa", true).order("nombre"),
     supabase.from("periodos").select("id, estacionamiento_id, desde, hasta, dia_semana, para_id, motivo, para_todos").order("desde"),
+    supabase.from("reservas").select("estacionamiento_id, persona_id, fecha").gte("fecha", haceUnAno),
   ]);
   if (error || !ests) return null;
 
@@ -46,6 +49,9 @@ export async function leerPuestos(supabase: SupabaseClient) {
       especial: e.uso_especial ?? undefined,
       liberaciones,
       asignaciones,
+      tomados: (reservas ?? [])
+        .filter((r) => r.estacionamiento_id === e.id)
+        .map((r) => ({ fecha: r.fecha, persona: nombreDe(r.persona_id)! })),
     };
   });
 

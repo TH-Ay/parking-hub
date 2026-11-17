@@ -20,9 +20,11 @@ export type Puesto = {
   especial?: string; // ej. "Visitas"
   liberaciones: Liberacion[];
   asignaciones: Asignacion[];
+  tomados?: { fecha: string; persona: string }[]; // días que alguien tomó este puesto (reservas); lo usa la vista del admin
 };
 
-export type Zona = "fijos" | "rotacion" | "libres";
+// "tomados" solo existe en la vista del admin (estadoAdminEn): un libre que alguien ya tomó ese día
+export type Zona = "fijos" | "rotacion" | "tomados" | "libres";
 
 // Cómo está un puesto en una fecha: en qué zona va y qué nombre se muestra
 export type EstadoDelDia = { zona: Zona; quien: string | null; deQuien?: string };
@@ -44,6 +46,13 @@ export function estadoEn(p: Puesto, fecha: string): EstadoDelDia {
   if (paraAlguien) return { zona: "rotacion", quien: paraAlguien.para!, deQuien: p.dueno! };
   if (libs.length) return { zona: "libres", quien: null, deQuien: p.dueno! };
   return { zona: "fijos", quien: p.dueno };
+}
+
+// Vista del admin: igual que estadoEn, pero un libre que alguien tomó ese día aparece "tomado" con su nombre
+export function estadoAdminEn(p: Puesto, fecha: string): EstadoDelDia {
+  const e = estadoEn(p, fecha);
+  const tomado = e.zona === "libres" ? p.tomados?.find((t) => t.fecha === fecha) : undefined;
+  return tomado ? { zona: "tomados", quien: tomado.persona, deQuien: e.deQuien } : e;
 }
 
 // ¿Liberación "larga"? = sin fecha de término o de un mes o más (y no "cada semana")

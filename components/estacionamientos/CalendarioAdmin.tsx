@@ -3,7 +3,7 @@
 // Usa los mismos datos del plano: lo que el admin cambia allá se ve acá.
 import { useState } from "react";
 import { AlertTriangle, CalendarClock, ChevronLeft, ChevronRight, CircleParking } from "lucide-react";
-import { esDeRotacion, estadoEn, type Puesto } from "./datosPrueba";
+import { esDeRotacion, estadoAdminEn, type Puesto } from "./datosPrueba";
 import { diaSemana, esHabil, fechaTexto, habil, lunesDe, mesDe, sumarDias, sumarMeses } from "./fechas";
 
 type Vista = "semana" | "mes" | "anio";
@@ -15,11 +15,13 @@ const mayuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const corta = (f: string) => fechaTexto(f, { day: "numeric", month: "short" });
 
 // Estado de un puesto en un día, con los mismos colores del plano
-type Celda = { tipo: "dueno" | "rotacion" | "libre" | "especial" | "sinDueno"; clase: string; texto: string; detalle: string };
+type Celda = { tipo: "dueno" | "rotacion" | "tomado" | "libre" | "especial" | "sinDueno"; clase: string; texto: string; detalle: string };
 function celdaDe(p: Puesto, f: string): Celda {
-  const e = estadoEn(p, f);
+  const e = estadoAdminEn(p, f);
   if (p.tipo === "especial") return { tipo: "especial", clase: "bg-slate-200 text-slate-700", texto: p.especial ?? "Especial", detalle: "Puesto especial" };
   if (e.zona === "rotacion") return { tipo: "rotacion", clase: "bg-amber-200 text-amber-950", texto: e.quien!, detalle: "Asignado / rotación" };
+  if (e.zona === "tomados")
+    return { tipo: "tomado", clase: "bg-violet-200 text-violet-950", texto: `Tomado: ${e.quien}`, detalle: `Lo tomó ${e.quien}` + (e.deQuien ? ` (liberado por ${e.deQuien})` : "") };
   if (e.zona === "libres" && esDeRotacion(p, f))
     return { tipo: "libre", clase: "border border-dashed border-amber-500 bg-amber-50 text-amber-900", texto: "Para rotación", detalle: "Reservado para la lista de espera" };
   if (e.zona === "libres")
@@ -238,6 +240,7 @@ function VistaSemana({ lunes, hoy, puestos }: { lunes: string; hoy: string; pues
       <div className="flex flex-wrap gap-3 text-[11px] text-marca-gris">
         <span className="flex items-center gap-1"><i className="h-3 w-3 rounded bg-sky-200" /> Lo usa su dueño</span>
         <span className="flex items-center gap-1"><i className="h-3 w-3 rounded bg-amber-200" /> Asignado / rotación</span>
+        <span className="flex items-center gap-1"><i className="h-3 w-3 rounded bg-violet-200" /> Tomado por el día</span>
         <span className="flex items-center gap-1"><i className="h-3 w-3 rounded bg-emerald-200" /> Libre sin tomar</span>
         <span className="flex items-center gap-1"><i className="h-3 w-3 rounded bg-slate-200" /> Especial</span>
         <span className="flex items-center gap-1"><i className="h-3 w-3 rounded border border-dashed border-marca-gris" /> Fijo sin dueño</span>

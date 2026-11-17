@@ -28,7 +28,8 @@ export default function TarjetaPuesto(props: Props) {
   const [nombreEspecial, setNombreEspecial] = useState("");
   const [abierto, setAbierto] = useState<string | null>(null); // acción con su formulario abierto
   const tipo = puesto.tipo === "fijo" ? "Fijo" : puesto.tipo === "variable" ? "Variable" : "Especial";
-  const hoy = estado.zona === "libres" ? "Libre" : (estado.quien ?? "Sin dueño aún");
+  const hoy =
+    estado.zona === "libres" ? "Libre" : estado.zona === "tomados" ? `Tomado por ${estado.quien}` : (estado.quien ?? "Sin dueño aún");
 
   const acciones: [LucideIcon, string][] =
     puesto.tipo === "fijo"

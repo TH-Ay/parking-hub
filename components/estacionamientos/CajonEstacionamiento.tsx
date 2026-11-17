@@ -48,7 +48,7 @@ export default function CajonEstacionamiento({ puesto, estado, elegido, onElegir
   } else {
     centro = (
       <>
-        <AutoCenital className="h-16" color={estado.zona === "rotacion" ? "#ef9f27" : "#378add"} />
+        <AutoCenital className="h-16" color={estado.zona === "rotacion" ? "#ef9f27" : estado.zona === "tomados" ? "#8b5cf6" : "#378add"} />
         <span className={chip}>{estado.quien}</span>
       </>
     );

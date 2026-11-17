@@ -12,7 +12,7 @@ import CalendarioAdmin from "./CalendarioAdmin";
 import { fechaTexto, hoyEnChile, sumarDias, sumarUnMes } from "./fechas";
 import ListaEspera, { type EnLista } from "./ListaEspera";
 import { accionesBD, type PersonaBD } from "./accionesBD";
-import { esDeRotacion, estadoEn, programadoDe, type Asignacion, type Liberacion, type Puesto, type Zona } from "./datosPrueba";
+import { esDeRotacion, estadoAdminEn, programadoDe, type Asignacion, type Liberacion, type Puesto, type Zona } from "./datosPrueba";
 
 const sinSuscripcion = () => () => {};
 
@@ -43,6 +43,7 @@ export default function PlanoEstacionamientos(props: Props) {
 const ZONAS: { zona: Zona; letra: string; color: string; titulo: string; subtitulo: string }[] = [
   { zona: "fijos", letra: "F", color: "bg-sky-200 text-sky-950", titulo: "Fijos", subtitulo: "Con su dueño" },
   { zona: "rotacion", letra: "R", color: "bg-amber-300 text-amber-950", titulo: "Rotación", subtitulo: "Asignados por un periodo" },
+  { zona: "tomados", letra: "T", color: "bg-violet-200 text-violet-950", titulo: "Tomados", subtitulo: "Alguien lo tomó hoy" },
   { zona: "libres", letra: "L", color: "bg-emerald-200 text-emerald-950", titulo: "Libres", subtitulo: "Disponibles para tomar" },
 ];
 
@@ -73,7 +74,7 @@ function Plano({ hoy, puestos, personas, listaEspera }: Props & { hoy: string })
     const sinMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (raiz.current && !sinMovimiento) {
       const pos = medir();
-      antes.current = new Map(puestos.map((p) => [p.numero, { zona: estadoEn(p, hoy).zona, centro: pos.get(p.numero)!.centro }]));
+      antes.current = new Map(puestos.map((p) => [p.numero, { zona: estadoAdminEn(p, hoy).zona, centro: pos.get(p.numero)!.centro }]));
     }
     const error = await accion;
     if (error) {
@@ -88,11 +89,11 @@ function Plano({ hoy, puestos, personas, listaEspera }: Props & { hoy: string })
   useLayoutEffect(() => {
     const previo = antes.current;
     if (!previo || !raiz.current) return;
-    const movido = puestos.map((p) => ({ p, zona: estadoEn(p, hoy).zona })).find((x) => previo.get(x.p.numero)?.zona !== x.zona);
+    const movido = puestos.map((p) => ({ p, zona: estadoAdminEn(p, hoy).zona })).find((x) => previo.get(x.p.numero)?.zona !== x.zona);
     if (!movido) return; // aún no llegan los datos nuevos (o nada cambió de zona)
     antes.current = null;
     const destino = medir().get(movido.p.numero)!;
-    const colores: Record<Zona, string | null> = { fijos: "#378add", rotacion: "#ef9f27", libres: null };
+    const colores: Record<Zona, string | null> = { fijos: "#378add", rotacion: "#ef9f27", tomados: "#8b5cf6", libres: null };
     setViaje({
       id: Date.now(),
       numero: movido.p.numero,
@@ -175,7 +176,7 @@ function Plano({ hoy, puestos, personas, listaEspera }: Props & { hoy: string })
   const [elegido, setElegido] = useState(puestos[0].numero);
   const [pestana, setPestana] = useState<"plano" | "calendario">("plano");
 
-  const conEstado = puestos.map((p) => ({ puesto: p, estado: estadoEn(p, hoy) }));
+  const conEstado = puestos.map((p) => ({ puesto: p, estado: estadoAdminEn(p, hoy) }));
   const actual = conEstado.find((x) => x.puesto.numero === elegido) ?? conEstado[0];
 
   return (
