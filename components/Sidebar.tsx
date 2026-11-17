@@ -19,20 +19,21 @@ export default function Sidebar({ usuario, rol }: { usuario: string; rol: Rol })
   const visibles = paginas.filter((p) => rol === "admin" || !p.soloAdmin);
 
   return (
-    <aside className="flex flex-col gap-4 border-b border-black/10 bg-white p-4 md:sticky md:top-0 md:h-screen md:w-48 md:shrink-0 lg:w-64 md:border-b-0 md:border-r">
+    // Desde 640 px (el teléfono arma la página a 640) el menú va a la izquierda; más angosto en pantallas medianas
+    <aside className="flex flex-col gap-4 border-b border-black/10 bg-white p-3 sm:sticky sm:top-0 sm:h-screen sm:w-40 sm:shrink-0 sm:border-b-0 sm:border-r md:w-48 lg:w-64 lg:p-4">
       <div className="px-2">
-        <Image src="/logo.png" alt="The House Advisory" width={160} height={43} priority className="h-auto" />
+        <Image src="/logo.png" alt="The House Advisory" width={160} height={43} priority className="h-auto w-full max-w-40" />
         <p className="mt-1 text-xs font-semibold tracking-[0.3em] text-acento">PARKING</p>
       </div>
 
-      <nav className="flex gap-1 overflow-x-auto md:flex-col">
+      <nav className="flex gap-1 overflow-x-auto sm:flex-col">
         {visibles.map(({ href, nombre, icono: Icono }) => {
           const activa = rutaActual.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 whitespace-nowrap rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              className={`flex items-center gap-2 whitespace-nowrap rounded-md px-2 py-2 text-sm font-medium transition-colors lg:gap-3 lg:px-3 ${
                 activa ? "bg-marca text-white" : "text-marca hover:bg-marca/5"
               }`}
             >
@@ -43,7 +44,7 @@ export default function Sidebar({ usuario, rol }: { usuario: string; rol: Rol })
         })}
       </nav>
 
-      <div className="mt-auto hidden border-t border-black/10 pt-4 md:block">
+      <div className="mt-auto hidden border-t border-black/10 pt-4 sm:block">
         <div className="truncate px-2 text-xs text-marca-gris">{usuario}</div>
         <div className="px-2 text-[11px] font-semibold uppercase tracking-wider text-acento">{rol === "admin" ? "Admin" : "Usuario"}</div>
         <form action="/auth/salir" method="post">

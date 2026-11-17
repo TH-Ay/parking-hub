@@ -24,7 +24,7 @@ Next.js 16 (App Router, TypeScript) + Tailwind 4 + Supabase (@supabase/ssr). Lue
 ## Negocio (MVP)
 - 20 estacionamientos con número: 142, 143, 148, 150, 152, 212 (-3), 302-311, 314, 331, 334, 335.
 - Pisos: 142–152 y 212 en subterráneo -3; 302–335 en -4.
-- Teléfono (pedido 17-nov-2026): se ve IGUAL que en el computador, achicado. app/layout.tsx exporta viewport { width: 1024, initialScale: undefined } → meta "width=1024" (el teléfono arma la página a 1024 px y la achica). Para volver a la versión adaptada al teléfono, borrar ese export.
+- Teléfono (pedido 17-nov-2026): se ve IGUAL que en el computador, achicado. app/layout.tsx exporta viewport { width: 640, initialScale: undefined } + script (Script beforeInteractive) que pone initial-scale = ancho de pantalla ÷ 640. El diseño horizontal (menú a la izquierda, columnas lado a lado) se activa desde sm (640 px). Se probó 1024 y 768: quedaba muy chico. Para volver a la versión adaptada al teléfono, borrar ese export.
 - Diseño: menú lateral blanco con logo (public/logo.png); páginas Estacionamientos, Disponibilidad, Personas (contenido lo define la usuaria). Colores en app/globals.css: marca #052a3a, marca-gris #8397a0, acento #13a699. Íconos: lucide-react.
 - Cada estacionamiento tiene un dueño. Si el dueño no va, lo LIBERA por uno o más días y otra persona lo puede TOMAR (gana el primero). También se puede SOLTAR uno tomado.
 - Reservas por día completo. Máximo 2 días calendario seguidos por persona.

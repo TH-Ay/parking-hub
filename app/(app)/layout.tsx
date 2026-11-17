@@ -26,9 +26,9 @@ async function Marco({ children }: { children: React.ReactNode }) {
 
   return (
     <RolProvider rol={rol}>
-      <div className="flex min-h-screen flex-col md:flex-row">
+      <div className="flex min-h-screen flex-col sm:flex-row">
         <Sidebar usuario={user?.email ?? ""} rol={rol} />
-        <main className="min-w-0 flex-1 p-6 lg:p-10">{children}</main>
+        <main className="min-w-0 flex-1 p-4 lg:p-10">{children}</main>
       </div>
     </RolProvider>
   );

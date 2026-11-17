@@ -218,7 +218,7 @@ function Plano({ hoy, puestos, personas, listaEspera }: Props & { hoy: string })
           }}
         />
       ) : (
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_15rem] md:items-start lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
+      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_13rem] sm:items-start md:grid-cols-[minmax(0,1fr)_15rem] lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
         {/* Plano */}
         <div ref={raiz} className="relative space-y-6">
           {/* Autito de juguete en camino (va por encima del plano) */}
@@ -251,7 +251,7 @@ function Plano({ hoy, puestos, personas, listaEspera }: Props & { hoy: string })
         </div>
 
         {/* Tarjeta del puesto (queda a la vista al bajar) + lista de espera plegable debajo */}
-        <div className="space-y-4 md:sticky md:top-6">
+        <div className="space-y-4 sm:sticky sm:top-6">
           <TarjetaPuesto
             key={actual.puesto.numero}
             puesto={actual.puesto}
