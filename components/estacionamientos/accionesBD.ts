@@ -39,12 +39,14 @@ export function accionesBD(personas: PersonaBD[]) {
         : resultado(supabase.from("periodos").delete().eq("id", periodoId)),
 
     // Cambios del puesto: dueño, tipo (fijo / variable / especial) y uso especial
-    cambiarPuesto: (estId: number, cambios: { tipo?: string; dueno?: string | null; usoEspecial?: string | null }) =>
+    cambiarPuesto: (estId: number, cambios: { tipo?: string; dueno?: string | null; usoEspecial?: string | null; diaADia?: boolean }) =>
       resultado(
         supabase
           .from("estacionamientos")
           .update({
-            ...(cambios.tipo !== undefined && { tipo: cambios.tipo }),
+            // al cambiar de tipo se apaga "día a día" (vale solo para variables)
+            ...(cambios.tipo !== undefined && { tipo: cambios.tipo, dia_a_dia: false }),
+            ...(cambios.diaADia !== undefined && { dia_a_dia: cambios.diaADia }),
             ...(cambios.dueno !== undefined && { dueno_id: idDe(cambios.dueno) }),
             ...(cambios.usoEspecial !== undefined && { uso_especial: cambios.usoEspecial }),
           })

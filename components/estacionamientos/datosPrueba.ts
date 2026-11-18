@@ -18,6 +18,7 @@ export type Puesto = {
   dueno: string | null; // solo fijos; null en un fijo = "aún sin dueño" (solo lo ve el admin)
   duenoId?: string | null; // id de la persona dueña en Supabase
   especial?: string; // ej. "Visitas"
+  diaADia?: boolean; // variable que cualquiera toma día a día (no va a la rotación)
   liberaciones: Liberacion[];
   asignaciones: Asignacion[];
   tomados?: { fecha: string; persona: string }[]; // días que alguien tomó este puesto (reservas); lo usa la vista del admin
@@ -68,7 +69,7 @@ export function esLarga(l: Liberacion): boolean {
 // libre, sin nadie asignado, y es variable o un fijo liberado "para cualquiera" con una liberación larga (sin marca paraTodos).
 export function esDeRotacion(p: Puesto, fecha: string): boolean {
   if (estadoEn(p, fecha).zona !== "libres") return false;
-  if (p.tipo === "variable") return true;
+  if (p.tipo === "variable") return !p.diaADia;
   return p.liberaciones.some((l) => !l.para && !l.paraTodos && liberadoEn(l, fecha) && esLarga(l));
 }
 

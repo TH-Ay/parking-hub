@@ -10,7 +10,7 @@ export type PersonaBD = { id: string; nombre: string };
 export async function leerPuestos(supabase: SupabaseClient) {
   const haceUnAno = sumarDias(hoyEnChile(), -366); // reservas del último año (para el calendario del admin)
   const [{ data: ests, error }, { data: personas }, { data: periodos }, { data: reservas }] = await Promise.all([
-    supabase.from("estacionamientos").select("id, numero, piso, tipo, dueno_id, uso_especial").order("numero"),
+    supabase.from("estacionamientos").select("id, numero, piso, tipo, dueno_id, uso_especial, dia_a_dia").order("numero"),
     supabase.from("personas").select("id, nombre").eq("activa", true).order("nombre"),
     supabase.from("periodos").select("id, estacionamiento_id, desde, hasta, dia_semana, para_id, motivo, para_todos").order("desde"),
     supabase.from("reservas").select("estacionamiento_id, persona_id, fecha").gte("fecha", haceUnAno),
@@ -47,6 +47,7 @@ export async function leerPuestos(supabase: SupabaseClient) {
       dueno: nombreDe(e.dueno_id),
       duenoId: e.dueno_id,
       especial: e.uso_especial ?? undefined,
+      diaADia: e.dia_a_dia ?? false,
       liberaciones,
       asignaciones,
       tomados: (reservas ?? [])

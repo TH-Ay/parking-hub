@@ -12,6 +12,8 @@ supabase/migracion_v2_3.sql - asignar_rotacion(propuesta editada) + correr_rotac
 supabase/cron_rotacion.sql - pg_cron: corre la rotación lunes a viernes 10:00 UTC
 supabase/migracion_v2_4.sql - puestos de rotación reservados (no se toman día a día)
 supabase/migracion_v2_5.sql - tomar: máx. 2 por semana, nunca seguidos
+supabase/migracion_v2_6.sql - tomar: máx. 1 día por semana
+supabase/migracion_v2_7.sql - variables "día a día" (no van a rotación)
 .env.local - variables reales de Supabase (NO se sube a GitHub)
 package.json - dependencias y comandos (npm run dev)
 app/layout.tsx - marco común de todas las páginas

@@ -20,10 +20,11 @@ type Props = {
   onQuitarEspecial: () => void;
   onPasarAFijo: (dueno: string | null) => void;
   onAsignar: (a: Asignacion) => void;
+  onDiaADia: (valor: boolean) => void;
 };
 
 export default function TarjetaPuesto(props: Props) {
-  const { puesto, estado, programado, hoy: fechaHoy, onLiberar, onQuitar, disponibles, onCambiarDueno, onPasarAVariable, onMarcarEspecial, onQuitarEspecial, onPasarAFijo, onAsignar } =
+  const { puesto, estado, programado, hoy: fechaHoy, onLiberar, onQuitar, disponibles, onCambiarDueno, onPasarAVariable, onMarcarEspecial, onQuitarEspecial, onPasarAFijo, onAsignar, onDiaADia } =
     props;
   const [nombreEspecial, setNombreEspecial] = useState("");
   const [abierto, setAbierto] = useState<string | null>(null); // acción con su formulario abierto
@@ -85,6 +86,24 @@ export default function TarjetaPuesto(props: Props) {
           </button>
         ))}
       </div>
+
+      {/* Solo variables: interruptor permanente "día a día" (si está apagado, el puesto es para la rotación) */}
+      {puesto.tipo === "variable" && (
+        <label className="mt-3 flex cursor-pointer items-start gap-2 rounded-md border border-black/10 px-3 py-2 text-sm text-marca">
+          <input
+            type="checkbox"
+            checked={!!puesto.diaADia}
+            onChange={(e) => onDiaADia(e.target.checked)}
+            className="mt-0.5 h-4 w-4 accent-acento"
+          />
+          <span>
+            Que cualquiera lo pueda tomar día a día
+            <span className="block text-xs text-marca-gris">
+              {puesto.diaADia ? "Aparece en Disponibilidad. No entra en la rotación." : "Apagado: queda reservado para la rotación."}
+            </span>
+          </span>
+        </label>
+      )}
 
       {abierto === "Liberar" && (
         <FormLiberar
