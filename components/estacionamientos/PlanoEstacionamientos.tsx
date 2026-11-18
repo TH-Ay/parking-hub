@@ -25,7 +25,7 @@ function libreParaRotar(p: Puesto, fecha: string) {
   const finMes = sumarDias(sumarUnMes(fecha), -1);
   const choca = (desde: string, hasta: string | null) => desde <= finMes && (hasta === null || hasta >= fecha);
   if (p.asignaciones.some((a) => choca(a.desde, a.hasta)) || p.liberaciones.some((l) => l.para && choca(l.desde, l.hasta))) return false;
-  if (p.tipo === "variable") return true;
+  if (p.tipo === "variable") return !p.diaADia;
   if (!p.dueno) return false;
   return p.liberaciones.some(
     (l) => !l.para && !l.paraTodos && l.cadaDia === undefined && l.desde <= fecha && (l.hasta === null || l.hasta >= finMes),
@@ -147,6 +147,14 @@ function Plano({ hoy, puestos, personas, listaEspera }: Props & { hoy: string })
     guardar(bd.cambiarPuesto(idDe(numero), { tipo: "variable", usoEspecial: null }), `El ${numero} ahora es variable`);
   }
 
+  // Variable "día a día": cualquiera lo toma (no va a la rotación). Permanente hasta apagarlo.
+  function cambiarDiaADia(numero: string, valor: boolean) {
+    guardar(
+      bd.cambiarPuesto(idDe(numero), { diaADia: valor }),
+      valor ? `El ${numero} ahora se toma día a día` : `El ${numero} vuelve a ser para rotación`,
+    );
+  }
+
   // Asignar por un periodo (variables y fijos sin dueño)
   function asignar(numero: string, a: Asignacion) {
     guardar(bd.asignar(idDe(numero), a), `El ${numero} quedó asignado a ${a.persona}`);
@@ -244,6 +252,7 @@ function Plano({ hoy, puestos, personas, listaEspera }: Props & { hoy: string })
                     onElegir={() => setElegido(puesto.numero)}
                     escondido={viaje?.numero === puesto.numero}
                     paraRotacion={esDeRotacion(puesto, hoy)}
+                    diaADia={puesto.tipo === "variable" && !!puesto.diaADia}
                   />
                 ))}
               </ZonaEstacionamiento>
@@ -268,6 +277,7 @@ function Plano({ hoy, puestos, personas, listaEspera }: Props & { hoy: string })
             onQuitarEspecial={() => quitarEspecial(actual.puesto.numero)}
             onPasarAFijo={(dueno) => pasarAFijo(actual.puesto.numero, dueno)}
             onAsignar={(a) => asignar(actual.puesto.numero, a)}
+            onDiaADia={(v) => cambiarDiaADia(actual.puesto.numero, v)}
           />
           <ListaEspera
             // al llegar datos nuevos de Supabase, el recuadro se vuelve a montar con la lista real
