@@ -2,16 +2,17 @@
 // Vista del USUARIO (Disponibilidad): 2/3 izquierda = calendario de disponibles; 1/3 derecha = "Lo tuyo".
 // Los datos vienen de Supabase (app/(app)/disponibilidad/page.tsx). Tomar, soltar, "No voy" y recuperar
 // escriben en Supabase (las reglas las revisa la base de datos) y luego se vuelve a pedir todo (router.refresh).
-import { useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Car, X } from "lucide-react";
 import ModalTomar from "./ModalTomar";
+import AutoViajero, { type Punto, type ViajeAuto } from "./AutoViajero";
 import PanelDueno, { type Afectado } from "./PanelDueno";
-import CalendarioDisponibles, { type Libre, type Propio } from "./CalendarioDisponibles";
+import CalendarioDisponibles, { type Cerrado, type Libre, type Propio } from "./CalendarioDisponibles";
 import AutoCenital from "@/components/estacionamientos/AutoCenital";
 import { ASFALTO } from "@/components/estacionamientos/asfalto";
 import { esDeRotacion, estadoEn, liberadoEn, type Liberacion, type Puesto } from "@/components/estacionamientos/datosPrueba";
-import { fechaTexto, hoyEnChile, sumarDias } from "@/components/estacionamientos/fechas";
+import { fechaTexto, hoyEnChile, lunesDe, sumarDias } from "@/components/estacionamientos/fechas";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/errores";
 
@@ -19,7 +20,8 @@ const sinSuscripcion = () => () => {};
 
 // Un puesto tuyo dibujado como cajón sobre asfalto, con tu auto (color acento) estacionado.
 // Sin número = cajón vacío ("No tienes nada tomado"). Si son varios días seguidos, van juntos en un cajón.
-function CajonTuyo({ numero, fechas = [], onSoltar }: { numero?: string; fechas?: string[]; onSoltar?: () => void }) {
+// sinAuto = el cajón espera al autito que viene manejando (se ve vacío hasta que llega)
+function CajonTuyo({ numero, fechas = [], onSoltar, sinAuto = false }: { numero?: string; fechas?: string[]; onSoltar?: () => void; sinAuto?: boolean }) {
   // 1 día: "martes, 17 de noviembre"; varios: "martes 17 y miércoles 18 de noviembre"
   const cuando =
     fechas.length === 1
@@ -32,7 +34,9 @@ function CajonTuyo({ numero, fechas = [], onSoltar }: { numero?: string; fechas?
       {/* Cajón con líneas blancas */}
       <div className="flex w-20 shrink-0 flex-col items-center justify-between border-x-2 border-t-2 border-white/70 px-1 pb-1 pt-2">
         {numero ? (
-          <AutoCenital color="#13a699" className="h-14" />
+          <div data-auto-cajon={`${numero}|${fechas.join(",")}`} className={sinAuto ? "invisible" : undefined}>
+            <AutoCenital color="#13a699" className="h-14" />
+          </div>
         ) : (
           <div className="h-14 w-7 rounded-lg border-2 border-dashed border-white/40" />
         )}
@@ -96,6 +100,7 @@ type Props = {
   avisos: Aviso[]; // mis avisos sin leer (ej. "Al final sí voy")
   yo: { id: string; nombre: string };
   miFijo: string | null; // número de mi puesto fijo, si tengo
+  feriados: Record<string, string>; // fecha → nombre del feriado
 };
 
 export default function VistaDisponibilidad(props: Props) {
@@ -105,7 +110,7 @@ export default function VistaDisponibilidad(props: Props) {
   return <Vista hoy={hoy} {...props} />;
 }
 
-function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: string }) {
+function Vista({ hoy, puestos, reservas, avisos, yo, miFijo, feriados }: Props & { hoy: string }) {
   const router = useRouter();
   const supabase = createClient();
   const misTomados = reservas.filter((r) => r.mia && r.fecha >= hoy);
@@ -121,6 +126,14 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
     .sort((a, b) => a.desde.localeCompare(b.desde));
   // Ventana abierta: "¿Quieres tomar…?" o "¿Quieres soltar…?"
   const [ventana, setVentana] = useState<{ accion: "tomar" | "soltar"; puesto: Puesto; fechas: string[] } | null>(null);
+  // Autito que viaja del puesto tocado a "Lo tuyo" al tomar con éxito
+  const [viaje, setViaje] = useState<ViajeAuto | null>(null);
+  const [origen, setOrigen] = useState<Punto | null>(null); // dónde estaba el puesto verde que se tocó
+  const [pendiente, setPendiente] = useState<{ numero: string; fecha: string } | null>(null); // recién tomado: su cajón espera al autito
+  const terminarViaje = useCallback(() => {
+    setViaje(null);
+    setPendiente(null);
+  }, []);
   const [error, setError] = useState("");
   const [aviso, setAviso] = useState("");
 
@@ -130,7 +143,35 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
     setTimeout(() => setAviso(""), 4000);
   }
 
+  // Guarda el centro del botón tocado (el puesto verde) como punto de partida del autito
+  function guardarOrigen() {
+    const el = document.activeElement;
+    if (el instanceof HTMLElement && el !== document.body) {
+      const r = el.getBoundingClientRect();
+      setOrigen({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+    } else setOrigen(null);
+  }
+
+  // Cuando aparece en "Lo tuyo" el cajón recién tomado, el autito maneja hasta él
+  // (si no se ve, primero se sube/baja la pantalla hasta ahí)
+  useEffect(() => {
+    if (!pendiente || viaje) return;
+    const lugar = [...document.querySelectorAll<HTMLElement>("[data-auto-cajon]")].find((el) => {
+      const [numero, fechas] = (el.dataset.autoCajon ?? "").split("|");
+      return numero === pendiente.numero && fechas.split(",").includes(pendiente.fecha);
+    });
+    if (!lugar) return; // aún no llegan los datos nuevos
+    lugar.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const espera = setTimeout(() => {
+      const r = lugar.getBoundingClientRect();
+      const hasta = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+      setViaje({ id: Date.now(), desde: origen ?? { x: 40, y: window.innerHeight - 80 }, hasta });
+    }, 400);
+    return () => clearTimeout(espera);
+  }, [pendiente, viaje, reservas, origen]);
+
   function abrir(accion: "tomar" | "soltar", puesto: Puesto, fechas: string[]) {
+    if (accion === "tomar") guardarOrigen();
     setError("");
     setVentana({ accion, puesto, fechas });
   }
@@ -144,6 +185,7 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
       const { error } = await supabase.from("reservas").insert({ estacionamiento_id: puesto.id, persona_id: yo.id, fecha });
       if (error) return setError(mensajeError(error));
       mostrarAviso(`Tomaste el ${puesto.numero} para el ${dia(fecha)}`);
+      setPendiente({ numero: puesto.numero, fecha });
     } else {
       // Soltar: los días elegidos vuelven a quedar libres
       const ids = misTomados.filter((t) => t.numero === puesto.numero && elegidas.includes(t.fecha)).map((t) => t.id);
@@ -178,6 +220,15 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
       .map(({ puesto, estado }) => ({ puesto, deQuien: estado.deQuien }));
 
   // Mi puesto fijo en los días que lo liberé (turquesa, no se puede tomar)
+  // Días en gris: feriados, y lo que está más allá del plazo para tomar (hasta el viernes de la próxima semana; misma regla que la BD)
+  const limite = sumarDias(lunesDe(hoy), 11);
+  const cerradoEn = (fecha: string): Cerrado | null =>
+    feriados[fecha]
+      ? { texto: "Feriado", detalle: feriados[fecha] }
+      : fecha > limite
+        ? { texto: "Aún no se abre", detalle: `Se puede tomar hasta el ${fechaTexto(limite, { weekday: "long", day: "numeric", month: "long" })}` }
+        : null;
+
   const propioEn = (fecha: string): Propio | null => {
     if (!fijo || estadoEn(fijo, fecha).zona !== "libres") return null;
     return { puesto: fijo, tomadoPor: tomadoPor(fijo.numero, fecha)?.persona };
@@ -248,6 +299,7 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
             hoy={hoy}
             libresEn={libresEn}
             propioEn={propioEn}
+            cerradoEn={cerradoEn}
             onElegir={(p, f) => abrir("tomar", p, [f])}
           />
         </div>
@@ -296,6 +348,7 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
                     numero={g.numero}
                     fechas={g.fechas}
                     onSoltar={() => abrir("soltar", puestos.find((p) => p.numero === g.numero)!, g.fechas)}
+                    sinAuto={pendiente?.numero === g.numero && g.fechas.includes(pendiente.fecha)}
                   />
                 ))
               )}
@@ -316,6 +369,8 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo }: Props & { hoy: st
           onConfirmar={confirmar}
         />
       )}
+
+      {viaje && <AutoViajero key={viaje.id} viaje={viaje} onFin={terminarViaje} />}
 
       {/* Aviso flotante */}
       {aviso && (

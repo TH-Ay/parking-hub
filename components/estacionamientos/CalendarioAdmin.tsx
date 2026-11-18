@@ -7,7 +7,7 @@ import { esDeRotacion, estadoAdminEn, type Puesto } from "./datosPrueba";
 import { diaSemana, esHabil, fechaTexto, habil, lunesDe, mesDe, sumarDias, sumarMeses } from "./fechas";
 
 type Vista = "semana" | "mes" | "anio";
-type Props = { hoy: string; puestos: Puesto[]; onIrAPuesto: (numero: string) => void };
+type Props = { hoy: string; puestos: Puesto[]; onIrAPuesto: (numero: string) => void; feriados: Record<string, string> };
 
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie"];
 const MESES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
@@ -21,7 +21,7 @@ function celdaDe(p: Puesto, f: string): Celda {
   if (p.tipo === "especial") return { tipo: "especial", clase: "bg-slate-200 text-slate-700", texto: p.especial ?? "Especial", detalle: "Puesto especial" };
   if (e.zona === "rotacion") return { tipo: "rotacion", clase: "bg-amber-200 text-amber-950", texto: e.quien!, detalle: "Asignado / rotación" };
   if (e.zona === "tomados")
-    return { tipo: "tomado", clase: "bg-violet-200 text-violet-950", texto: `Tomado: ${e.quien}`, detalle: `Lo tomó ${e.quien}` + (e.deQuien ? ` (liberado por ${e.deQuien})` : "") };
+    return { tipo: "tomado", clase: "bg-violet-200 text-violet-950", texto: `Prestado: ${e.quien}`, detalle: `Prestado a ${e.quien}` + (e.deQuien ? ` (liberado por ${e.deQuien})` : "") };
   if (e.zona === "libres" && esDeRotacion(p, f))
     return { tipo: "libre", clase: "border border-dashed border-amber-500 bg-amber-50 text-amber-900", texto: "Para rotación", detalle: "Reservado para la lista de espera" };
   if (e.zona === "libres")
@@ -37,12 +37,13 @@ function diasHabiles(desde: string, hasta: string) {
   return dias;
 }
 
-export default function CalendarioAdmin({ hoy, puestos, onIrAPuesto }: Props) {
+export default function CalendarioAdmin({ hoy, puestos, onIrAPuesto, feriados }: Props) {
   const [vista, setVista] = useState<Vista>("mes");
   const [foco, setFoco] = useState(habil(hoy));
   const ordenados = [...puestos].sort((a, b) => a.numero.localeCompare(b.numero));
-  const libresEn = (f: string) => puestos.filter((p) => celdaDe(p, f).tipo === "libre").length;
-  const rotacionEn = (f: string) => puestos.filter((p) => celdaDe(p, f).tipo === "rotacion").length;
+  // Los feriados no cuentan (nadie usa los estacionamientos)
+  const libresEn = (f: string) => (feriados[f] ? 0 : puestos.filter((p) => celdaDe(p, f).tipo === "libre").length);
+  const rotacionEn = (f: string) => (feriados[f] ? 0 : puestos.filter((p) => celdaDe(p, f).tipo === "rotacion").length);
 
   // ---- Alertas ----
   const sinDueno = ordenados.filter((p) => p.tipo === "fijo" && !p.dueno);
@@ -165,13 +166,14 @@ export default function CalendarioAdmin({ hoy, puestos, onIrAPuesto }: Props) {
         </div>
 
         <div className="mt-4">
-          {vista === "semana" && <VistaSemana lunes={lunes} hoy={hoy} puestos={ordenados} />}
+          {vista === "semana" && <VistaSemana lunes={lunes} hoy={hoy} puestos={ordenados} feriados={feriados} />}
           {vista === "mes" && (
             <VistaMes
               foco={foco}
               hoy={hoy}
               libresEn={libresEn}
               rotacionEn={rotacionEn}
+              feriados={feriados}
               onDia={(f) => {
                 setFoco(f);
                 setVista("semana");
@@ -196,7 +198,7 @@ export default function CalendarioAdmin({ hoy, puestos, onIrAPuesto }: Props) {
 }
 
 // Semana: tabla con los puestos en filas y los días (lunes a viernes) en columnas
-function VistaSemana({ lunes, hoy, puestos }: { lunes: string; hoy: string; puestos: Puesto[] }) {
+function VistaSemana({ lunes, hoy, puestos, feriados }: { lunes: string; hoy: string; puestos: Puesto[]; feriados: Record<string, string> }) {
   const dias = DIAS.map((_, i) => sumarDias(lunes, i));
   return (
     <div className="space-y-3">
@@ -208,6 +210,7 @@ function VistaSemana({ lunes, hoy, puestos }: { lunes: string; hoy: string; pues
               {dias.map((f, i) => (
                 <th key={f} className={`font-semibold ${f === hoy ? "text-acento" : "text-marca-gris"}`}>
                   {DIAS[i]} {Number(f.slice(8))}
+                  {feriados[f] && <span className="block text-[10px] font-normal text-marca-gris">Feriado</span>}
                 </th>
               ))}
             </tr>
@@ -219,7 +222,10 @@ function VistaSemana({ lunes, hoy, puestos }: { lunes: string; hoy: string; pues
                   {p.numero} <span className="font-sans text-[10px] font-semibold text-marca-gris">N{p.piso}</span>
                 </td>
                 {dias.map((f) => {
-                  const c = celdaDe(p, f);
+                  // Feriado: celda gris "Feriado" (no se usa ese día)
+                  const c = feriados[f]
+                    ? { clase: "bg-black/[0.06] text-marca-gris", texto: "Feriado", detalle: feriados[f] }
+                    : celdaDe(p, f);
                   return (
                     <td key={f}>
                       <div
@@ -240,7 +246,7 @@ function VistaSemana({ lunes, hoy, puestos }: { lunes: string; hoy: string; pues
       <div className="flex flex-wrap gap-3 text-[11px] text-marca-gris">
         <span className="flex items-center gap-1"><i className="h-3 w-3 rounded bg-sky-200" /> Lo usa su dueño</span>
         <span className="flex items-center gap-1"><i className="h-3 w-3 rounded bg-amber-200" /> Asignado / rotación</span>
-        <span className="flex items-center gap-1"><i className="h-3 w-3 rounded bg-violet-200" /> Tomado por el día</span>
+        <span className="flex items-center gap-1"><i className="h-3 w-3 rounded bg-violet-200" /> Prestado por el día</span>
         <span className="flex items-center gap-1"><i className="h-3 w-3 rounded bg-emerald-200" /> Libre sin tomar</span>
         <span className="flex items-center gap-1"><i className="h-3 w-3 rounded bg-slate-200" /> Especial</span>
         <span className="flex items-center gap-1"><i className="h-3 w-3 rounded border border-dashed border-marca-gris" /> Fijo sin dueño</span>
@@ -255,9 +261,10 @@ function VistaMes(props: {
   hoy: string;
   libresEn: (f: string) => number;
   rotacionEn: (f: string) => number;
+  feriados: Record<string, string>;
   onDia: (f: string) => void;
 }) {
-  const { foco, hoy, libresEn, rotacionEn, onDia } = props;
+  const { foco, hoy, libresEn, rotacionEn, feriados, onDia } = props;
   const { desde, hasta } = mesDe(foco);
   const dias = diasHabiles(desde, hasta);
   const vacios = diaSemana(dias[0]) - 1;
@@ -275,11 +282,13 @@ function VistaMes(props: {
           <button
             key={f}
             onClick={() => onDia(f)}
+            title={feriados[f]}
             className={`flex h-20 flex-col items-start justify-between rounded-lg border p-2 text-left transition hover:border-acento ${
               f === hoy ? "border-acento ring-1 ring-acento" : "border-black/10"
-            } ${pasado ? "bg-black/[0.02] opacity-60" : "bg-white"}`}
+            } ${pasado ? "bg-black/[0.02] opacity-60" : feriados[f] ? "bg-black/[0.05]" : "bg-white"}`}
           >
-            <span className="text-sm font-semibold text-marca">{Number(f.slice(8))}</span>
+            <span className={`text-sm font-semibold ${feriados[f] ? "text-marca-gris" : "text-marca"}`}>{Number(f.slice(8))}</span>
+            {feriados[f] && <span className="text-[11px] font-semibold text-marca-gris">Feriado</span>}
             <div className="flex flex-wrap gap-1">
               {libres > 0 && (
                 <span title="Libres sin tomar" className="rounded bg-emerald-500 px-1.5 py-0.5 text-[11px] font-semibold text-white">

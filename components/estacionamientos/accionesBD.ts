@@ -24,7 +24,7 @@ export function accionesBD(personas: PersonaBD[]) {
           dia_semana: l.cadaDia ?? null,
           para_id: idDe(l.para),
           motivo: l.motivo ?? null,
-          para_todos: l.paraTodos ?? false,
+          para_todos: l.paraTodos ?? true,
         }),
       ),
 
@@ -38,14 +38,21 @@ export function accionesBD(personas: PersonaBD[]) {
         ? resultado(supabase.from("periodos").update({ hasta: sumarDias(hoy, -1) }).eq("id", periodoId))
         : resultado(supabase.from("periodos").delete().eq("id", periodoId)),
 
+    // Liberación larga de un fijo: para todos (true) o para la rotación (false)
+    cambiarParaTodos: (periodoId: number, valor: boolean) =>
+      resultado(supabase.from("periodos").update({ para_todos: valor }).eq("id", periodoId)),
+
+    // Quitar un día que alguien tomó (la BD borra la reserva y le deja un aviso a la persona)
+    quitarReserva: (reservaId: number) => resultado(supabase.rpc("quitar_reserva", { p_reserva: reservaId })),
+
     // Cambios del puesto: dueño, tipo (fijo / variable / especial) y uso especial
     cambiarPuesto: (estId: number, cambios: { tipo?: string; dueno?: string | null; usoEspecial?: string | null; diaADia?: boolean }) =>
       resultado(
         supabase
           .from("estacionamientos")
           .update({
-            // al cambiar de tipo se apaga "día a día" (vale solo para variables)
-            ...(cambios.tipo !== undefined && { tipo: cambios.tipo, dia_a_dia: false }),
+            // al pasar a variable parte "día a día" (para todos); en otro tipo no aplica
+            ...(cambios.tipo !== undefined && { tipo: cambios.tipo, dia_a_dia: cambios.tipo === "variable" }),
             ...(cambios.diaADia !== undefined && { dia_a_dia: cambios.diaADia }),
             ...(cambios.dueno !== undefined && { dueno_id: idDe(cambios.dueno) }),
             ...(cambios.usoEspecial !== undefined && { uso_especial: cambios.usoEspecial }),

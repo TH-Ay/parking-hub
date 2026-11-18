@@ -5,6 +5,9 @@ import { ArrowLeftRight, CalendarOff, Lock, LockOpen, Star, User, UserMinus, X, 
 import FormLiberar from "./FormLiberar";
 import FormDueno from "./FormDueno";
 import type { Asignacion, EstadoDelDia, Liberacion, Programado, Puesto } from "./datosPrueba";
+import { fechaTexto } from "./fechas";
+
+type Tomado = NonNullable<Puesto["tomados"]>[number];
 
 type Props = {
   puesto: Puesto;
@@ -21,16 +24,22 @@ type Props = {
   onPasarAFijo: (dueno: string | null) => void;
   onAsignar: (a: Asignacion) => void;
   onDiaADia: (valor: boolean) => void;
+  onQuitarTomado: (t: Tomado) => void;
+  onParaTodos: (clave: string, valor: boolean) => void;
 };
 
 export default function TarjetaPuesto(props: Props) {
-  const { puesto, estado, programado, hoy: fechaHoy, onLiberar, onQuitar, disponibles, onCambiarDueno, onPasarAVariable, onMarcarEspecial, onQuitarEspecial, onPasarAFijo, onAsignar, onDiaADia } =
+  const { puesto, estado, programado, hoy: fechaHoy, onLiberar, onQuitar, disponibles, onCambiarDueno, onPasarAVariable, onMarcarEspecial, onQuitarEspecial, onPasarAFijo, onAsignar, onDiaADia, onQuitarTomado, onParaTodos } =
     props;
   const [nombreEspecial, setNombreEspecial] = useState("");
   const [abierto, setAbierto] = useState<string | null>(null); // acción con su formulario abierto
+  const [porQuitar, setPorQuitar] = useState<number | null>(null); // id de la reserva que se está confirmando quitar
+  // "Tomado por": días que alguien tomó este puesto, desde hoy en adelante
+  const tomados = (puesto.tomados ?? []).filter((t) => t.fecha >= fechaHoy).sort((a, b) => a.fecha.localeCompare(b.fecha));
+  const diaTexto = (f: string) => fechaTexto(f, { weekday: "short", day: "numeric", month: "short" });
   const tipo = puesto.tipo === "fijo" ? "Fijo" : puesto.tipo === "variable" ? "Variable" : "Especial";
   const hoy =
-    estado.zona === "libres" ? "Libre" : estado.zona === "tomados" ? `Tomado por ${estado.quien}` : (estado.quien ?? "Sin dueño aún");
+    estado.zona === "libres" ? "Libre" : estado.zona === "tomados" ? `Prestado a ${estado.quien}` : (estado.quien ?? "Sin dueño aún");
 
   const acciones: [LucideIcon, string][] =
     puesto.tipo === "fijo"
@@ -50,7 +59,7 @@ export default function TarjetaPuesto(props: Props) {
         ? [
             [Lock, "Pasar a fijo"],
             [ArrowLeftRight, "Asignar por un periodo"],
-            [Star, "Marcar como especial"],
+            [Star, "Marcar como especial (visitas, etc.)"],
           ]
         : [[LockOpen, "Quitar marca especial"]];
 
@@ -72,7 +81,7 @@ export default function TarjetaPuesto(props: Props) {
                 texto === "Liberar" ? "Liberar"
                 : texto.startsWith("Dueño") ? "Dueño"
                 : texto === "Quitar dueño" || texto === "Pasar a variable" ? "Variable"
-                : texto === "Marcar como especial" ? "Especial"
+                : texto.startsWith("Marcar como especial") ? "Especial"
                 : texto === "Pasar a fijo" ? "Fijo"
                 : texto === "Asignar por un periodo" ? "Asignar"
                 : texto === "Quitar marca especial" ? "QuitarEspecial"
@@ -99,7 +108,7 @@ export default function TarjetaPuesto(props: Props) {
           <span>
             Que cualquiera lo pueda tomar día a día
             <span className="block text-xs text-marca-gris">
-              {puesto.diaADia ? "Aparece en Disponibilidad. No entra en la rotación." : "Apagado: queda reservado para la rotación."}
+              {puesto.diaADia ? "Aparece en Disponibilidad. Apágalo para dejarlo para la rotación." : "Apagado: queda reservado para la rotación."}
             </span>
           </span>
         </label>
@@ -219,10 +228,62 @@ export default function TarjetaPuesto(props: Props) {
         <ul className="mt-2 space-y-1.5">
           {programado.map((p) => (
             <li key={p.clave} className="flex items-center justify-between gap-2 rounded-md border border-black/10 px-3 py-1.5 text-xs text-marca">
-              <span>{p.texto}</span>
+              <span>
+                {p.texto}
+                {/* Liberación larga: para todos (por defecto) o para la rotación; un clic lo cambia */}
+                {p.paraTodos !== undefined && (
+                  <button
+                    onClick={() => onParaTodos(p.clave, !p.paraTodos)}
+                    title={p.paraTodos ? "Clic para dejarlo para la rotación" : "Clic para dejarlo para todos"}
+                    className={`ml-1.5 rounded px-1.5 py-0.5 text-[10px] font-bold ${p.paraTodos ? "bg-emerald-100 text-emerald-900" : "bg-amber-100 text-amber-900"}`}
+                  >
+                    {p.paraTodos ? "Para todos" : "Para rotación"}
+                  </button>
+                )}
+              </span>
               <button onClick={() => onQuitar(p.clave)} className="shrink-0 text-marca-gris hover:text-rose-600" aria-label="Cancelar">
                 <X size={14} />
               </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* "Tomado por": quién tomó el puesto y qué días; la ✕ se lo quita (pide confirmar; la persona recibe aviso) */}
+      <h4 className="mt-5 text-sm font-semibold text-marca">Prestado a</h4>
+      {tomados.length === 0 ? (
+        <p className="mt-1 text-xs text-marca-gris">No está prestado</p>
+      ) : (
+        <ul className="mt-2 space-y-1.5">
+          {tomados.map((t) => (
+            <li key={t.id ?? t.fecha} className="rounded-md border border-black/10 px-3 py-1.5 text-xs text-marca">
+              <div className="flex items-center justify-between gap-2">
+                <span>
+                  {diaTexto(t.fecha)} · {t.persona}
+                </span>
+                <button onClick={() => setPorQuitar(t.id ?? null)} className="shrink-0 text-marca-gris hover:text-rose-600" aria-label="Quitar">
+                  <X size={14} />
+                </button>
+              </div>
+              {porQuitar !== null && porQuitar === t.id && (
+                <div className="mt-2 flex flex-wrap items-center gap-2">
+                  <span className="text-marca">
+                    ¿Quitarle el {puesto.numero} del {diaTexto(t.fecha)} a {t.persona}?
+                  </span>
+                  <button
+                    onClick={() => {
+                      onQuitarTomado(t);
+                      setPorQuitar(null);
+                    }}
+                    className="rounded bg-rose-600 px-2 py-0.5 font-medium text-white hover:bg-rose-700"
+                  >
+                    Sí, quitar
+                  </button>
+                  <button onClick={() => setPorQuitar(null)} className="rounded border border-black/10 px-2 py-0.5 hover:bg-marca/5">
+                    No
+                  </button>
+                </div>
+              )}
             </li>
           ))}
         </ul>

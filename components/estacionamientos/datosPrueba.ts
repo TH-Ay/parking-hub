@@ -21,7 +21,7 @@ export type Puesto = {
   diaADia?: boolean; // variable que cualquiera toma día a día (no va a la rotación)
   liberaciones: Liberacion[];
   asignaciones: Asignacion[];
-  tomados?: { fecha: string; persona: string }[]; // días que alguien tomó este puesto (reservas); lo usa la vista del admin
+  tomados?: { id?: number; fecha: string; persona: string }[]; // días que alguien tomó este puesto (reservas); lo usa la vista del admin
 };
 
 // "tomados" solo existe en la vista del admin (estadoAdminEn): un libre que alguien ya tomó ese día
@@ -69,12 +69,15 @@ export function esLarga(l: Liberacion): boolean {
 // libre, sin nadie asignado, y es variable o un fijo liberado "para cualquiera" con una liberación larga (sin marca paraTodos).
 export function esDeRotacion(p: Puesto, fecha: string): boolean {
   if (estadoEn(p, fecha).zona !== "libres") return false;
+  // liberado "para todos" ese día (ej. por una baja): se toma día a día
+  if (p.liberaciones.some((l) => !l.para && l.paraTodos && liberadoEn(l, fecha))) return false;
   if (p.tipo === "variable") return !p.diaADia;
   return p.liberaciones.some((l) => !l.para && !l.paraTodos && liberadoEn(l, fecha) && esLarga(l));
 }
 
 // Lista "Programado" (desde hoy en adelante). "clave" identifica qué borrar con la ✕.
-export type Programado = { texto: string; clave: string };
+// paraTodos: solo en liberaciones largas "para cualquiera" (true = para todos, false = para la rotación); se puede cambiar.
+export type Programado = { texto: string; clave: string; paraTodos?: boolean };
 
 export function programadoDe(p: Puesto, hoy: string): Programado[] {
   const rango = (d: string, h: string) => (d === h ? fechaCorta(d) : `${fechaCorta(d)} – ${fechaCorta(h)}`);
@@ -85,7 +88,8 @@ export function programadoDe(p: Puesto, hoy: string): Programado[] {
       const cuando =
         l.cadaDia !== undefined ? `Cada ${DIAS[l.cadaDia]}` : l.hasta ? rango(l.desde, l.hasta) : `Desde ${fechaCorta(l.desde)}, sin fecha de término`;
       const quien = l.para ? `Liberado para ${l.para}` : "Liberado para cualquiera";
-      return { texto: `${cuando} · ${quien}${l.motivo ? ` (${l.motivo})` : ""}`, clave: `lib-${i}` };
+      const cambiable = !l.para && esLarga(l);
+      return { texto: `${cuando} · ${quien}${l.motivo ? ` (${l.motivo})` : ""}`, clave: `lib-${i}`, ...(cambiable && { paraTodos: !!l.paraTodos }) };
     });
   const asig = p.asignaciones
     .map((a, i) => ({ a, i }))

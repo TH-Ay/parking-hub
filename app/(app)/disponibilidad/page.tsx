@@ -45,6 +45,7 @@ async function DisponibilidadDesdeSupabase() {
       avisos={(avisos ?? []) as Aviso[]}
       yo={yo}
       miFijo={datos.puestos.find((p) => p.tipo === "fijo" && p.duenoId === yo.id)?.numero ?? null}
+      feriados={datos.feriados}
     />
   );
 }

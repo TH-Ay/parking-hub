@@ -30,5 +30,5 @@ async function PlanoDesdeSupabase() {
     orden: l.orden,
     saltar: l.saltar,
   }));
-  return <PlanoEstacionamientos puestos={datos.puestos} personas={datos.personas} listaEspera={listaEspera} />;
+  return <PlanoEstacionamientos puestos={datos.puestos} personas={datos.personas} listaEspera={listaEspera} feriados={datos.feriados} />;
 }
