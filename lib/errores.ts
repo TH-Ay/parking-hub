@@ -8,6 +8,9 @@ export function mensajeError(error: ErrorSupabase): string {
     case "23505": // dato repetido (ej. correo o reserva duplicada)
       if (error.message.includes("email")) return "Ya hay otra persona con ese correo.";
       if (error.message.includes("dueno_id")) return "Esa persona ya tiene un puesto fijo.";
+      // dos personas tomaron el mismo puesto y día a la vez: ganó la otra
+      if (error.message.includes("reservas_estacionamiento_id_fecha")) return "Estacionamiento ya reservado, no disponible.";
+      if (error.message.includes("reservas_persona_id_fecha")) return "Ya tienes un estacionamiento ese día.";
       return "Eso ya existe.";
     case "23514": // regla de la tabla (check)
       return error.message.includes("email") ? "El correo debe terminar en @thehouse.cl." : "Algún dato no es válido.";

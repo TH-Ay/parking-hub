@@ -9,11 +9,12 @@ export type PersonaBD = { id: string; nombre: string };
 
 export async function leerPuestos(supabase: SupabaseClient) {
   const haceUnAno = sumarDias(hoyEnChile(), -366); // reservas del último año (para el calendario del admin)
-  const [{ data: ests, error }, { data: personas }, { data: periodos }, { data: reservas }] = await Promise.all([
+  const [{ data: ests, error }, { data: personas }, { data: periodos }, { data: reservas }, { data: feriadosBD }] = await Promise.all([
     supabase.from("estacionamientos").select("id, numero, piso, tipo, dueno_id, uso_especial, dia_a_dia").order("numero"),
     supabase.from("personas").select("id, nombre").eq("activa", true).order("nombre"),
     supabase.from("periodos").select("id, estacionamiento_id, desde, hasta, dia_semana, para_id, motivo, para_todos").order("desde"),
-    supabase.from("reservas").select("estacionamiento_id, persona_id, fecha").gte("fecha", haceUnAno),
+    supabase.from("reservas").select("id, estacionamiento_id, persona_id, fecha").gte("fecha", haceUnAno),
+    supabase.from("feriados").select("fecha, nombre"), // si la tabla aún no existe, queda vacío
   ]);
   if (error || !ests) return null;
 
@@ -52,9 +53,12 @@ export async function leerPuestos(supabase: SupabaseClient) {
       asignaciones,
       tomados: (reservas ?? [])
         .filter((r) => r.estacionamiento_id === e.id)
-        .map((r) => ({ fecha: r.fecha, persona: nombreDe(r.persona_id)! })),
+        .map((r) => ({ id: r.id, fecha: r.fecha, persona: nombreDe(r.persona_id)! })),
     };
   });
 
-  return { puestos, personas: (personas ?? []) as PersonaBD[] };
+  // Feriados: { "2026-12-08": "Inmaculada Concepción", ... }
+  const feriados: Record<string, string> = Object.fromEntries((feriadosBD ?? []).map((f) => [f.fecha, f.nombre]));
+
+  return { puestos, personas: (personas ?? []) as PersonaBD[], feriados };
 }

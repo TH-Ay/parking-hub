@@ -14,6 +14,9 @@ supabase/migracion_v2_4.sql - puestos de rotación reservados (no se toman día 
 supabase/migracion_v2_5.sql - tomar: máx. 2 por semana, nunca seguidos
 supabase/migracion_v2_6.sql - tomar: máx. 1 día por semana
 supabase/migracion_v2_7.sql - variables "día a día" (no van a rotación)
+supabase/migracion_v2_8.sql - admin quita día tomado (con aviso)
+supabase/migracion_v2_9.sql - lo libre es para todos por defecto
+supabase/migracion_v2_10.sql - feriados, plazo 2 semanas, asignar gana, bajas
 .env.local - variables reales de Supabase (NO se sube a GitHub)
 package.json - dependencias y comandos (npm run dev)
 app/layout.tsx - marco común de todas las páginas
@@ -36,6 +39,7 @@ components/estacionamientos/accionesBD.ts - acciones del admin que guardan en Su
 app/(app)/disponibilidad/page.tsx - Disponibilidad: lee puestos, reservas y avisos de Supabase
 lib/puestosBD.ts - lee puestos de Supabase y los convierte para el plano
 components/disponibilidad/VistaDisponibilidad.tsx - usuario: calendario (2/3) + "Lo tuyo" (1/3)
+components/disponibilidad/AutoViajero.tsx - autito que viaja a "Lo tuyo" al tomar
 components/disponibilidad/CalendarioDisponibles.tsx - calendario de libres: mes, semana, día
 components/disponibilidad/ModalTomar.tsx - ventana "¿Quieres tomar/soltar el …?" con confirmar
 components/disponibilidad/PanelDueno.tsx - dueño: su fijo, "No voy" y recuperar

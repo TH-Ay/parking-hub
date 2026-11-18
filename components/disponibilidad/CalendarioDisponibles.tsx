@@ -7,9 +7,19 @@ import type { Puesto } from "@/components/estacionamientos/datosPrueba";
 import { ASFALTO } from "@/components/estacionamientos/asfalto";
 import AutoCenital from "@/components/estacionamientos/AutoCenital";
 
+// Autitos que pasan por la calle de abajo del calendario: pista, color, duración de la vuelta y punto de partida
+const PASAN_CALLE = [
+  { arriba: true, color: "#378add", duracion: 14, retraso: -3 },
+  { arriba: true, color: "#ef9f27", duracion: 19, retraso: -11 },
+  { arriba: false, color: "#e8766b", duracion: 16, retraso: -6 },
+  { arriba: false, color: "#8397a0", duracion: 22, retraso: -15 },
+];
+
 export type Libre = { puesto: Puesto; deQuien?: string };
 // Puesto del dueño que él mismo liberó ese día (solo informativo: no se puede tomar ni suma al contador)
 export type Propio = { puesto: Puesto; tomadoPor?: string };
+// Día "cerrado" (en gris, sin libres): feriado o todavía fuera del plazo para tomar. detalle = texto al pasar el mouse
+export type Cerrado = { texto: string; detalle: string };
 type Vista = "mes" | "semana" | "dia";
 
 type Props = {
@@ -17,13 +27,14 @@ type Props = {
   libresEn: (fecha: string) => Libre[];
   onElegir: (puesto: Puesto, fecha: string) => void; // el usuario tocó un puesto libre
   propioEn?: (fecha: string) => Propio | null;
+  cerradoEn?: (fecha: string) => Cerrado | null;
 };
 
 // Solo días hábiles (lunes a viernes): la oficina no usa los estacionamientos el fin de semana
 const DIAS = ["Lun", "Mar", "Mié", "Jue", "Vie"];
 const mayuscula = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 
-export default function CalendarioDisponibles({ hoy, libresEn, onElegir, propioEn = () => null }: Props) {
+export default function CalendarioDisponibles({ hoy, libresEn, onElegir, propioEn = () => null, cerradoEn = () => null }: Props) {
   const [vista, setVista] = useState<Vista>("mes");
   const [foco, setFoco] = useState(habil(hoy)); // fecha que se está mirando
 
@@ -86,12 +97,12 @@ export default function CalendarioDisponibles({ hoy, libresEn, onElegir, propioE
       </div>
 
       <div className="mt-4">
-        {vista === "mes" && <VistaMes foco={foco} hoy={hoy} libresEn={libresEn} onDia={abrirDia} />}
+        {vista === "mes" && <VistaMes foco={foco} hoy={hoy} libresEn={libresEn} onDia={abrirDia} cerradoEn={cerradoEn} />}
         {vista === "semana" && (
-          <VistaSemana lunes={lunes} hoy={hoy} libresEn={libresEn} onDia={abrirDia} onElegir={onElegir} propioEn={propioEn} />
+          <VistaSemana lunes={lunes} hoy={hoy} libresEn={libresEn} onDia={abrirDia} onElegir={onElegir} propioEn={propioEn} cerradoEn={cerradoEn} />
         )}
         {vista === "dia" && (
-          <VistaDia fecha={foco} hoy={hoy} libres={libresEn(foco)} onElegir={onElegir} propio={foco < hoy ? null : propioEn(foco)} />
+          <VistaDia fecha={foco} hoy={hoy} libres={libresEn(foco)} onElegir={onElegir} propio={foco < hoy ? null : propioEn(foco)} cerrado={cerradoEn(foco)} />
         )}
       </div>
 
@@ -100,7 +111,7 @@ export default function CalendarioDisponibles({ hoy, libresEn, onElegir, propioE
   );
 }
 
-type VistaProps = { hoy: string; libresEn: (fecha: string) => Libre[]; onDia: (fecha: string) => void };
+type VistaProps = { hoy: string; libresEn: (fecha: string) => Libre[]; onDia: (fecha: string) => void; cerradoEn: (fecha: string) => Cerrado | null };
 type Elegir = (puesto: Puesto, fecha: string) => void; // tocar un puesto libre para tomarlo
 
 type Pasada = { id: number; direccion: 1 | -1 };
@@ -127,6 +138,21 @@ function Pista({ pasada }: { pasada: Pasada | null }) {
   return (
     <div className="relative -mx-3 -mb-3 mt-3 h-10 overflow-hidden lg:-mx-5 lg:-mb-5 lg:mt-4" style={ASFALTO}>
       <div className="absolute inset-x-0 top-1/2 border-t-2 border-dashed border-amber-300/80" />
+      {/* Autitos que pasan todo el rato (como en el login): pista de arriba → derecha, pista de abajo ← izquierda */}
+      {PASAN_CALLE.map((a, i) => (
+        <div
+          key={i}
+          aria-hidden
+          className={`auto-en-movimiento absolute left-0 -mt-3 ${a.arriba ? "top-[30%]" : "top-[72%]"} ${
+            a.arriba
+              ? "animate-[manejar-derecha_var(--duracion)_linear_var(--retraso)_infinite]"
+              : "animate-[manejar-izquierda_var(--duracion)_linear_var(--retraso)_infinite]"
+          }`}
+          style={{ "--duracion": `${a.duracion}s`, "--retraso": `${a.retraso}s` } as React.CSSProperties}
+        >
+          <AutoCenital color={a.color} className="h-6" />
+        </div>
+      ))}
       <div ref={auto} className="absolute left-0 top-1/2" style={{ transform: "translateX(-60px) translateY(-50%)" }}>
         <AutoCenital color="#13a699" className="h-8" />
       </div>
@@ -135,7 +161,7 @@ function Pista({ pasada }: { pasada: Pasada | null }) {
 }
 
 // Mes: cuadrícula de lunes a viernes; cada día dice cuántos libres hay
-function VistaMes({ foco, hoy, libresEn, onDia }: VistaProps & { foco: string }) {
+function VistaMes({ foco, hoy, libresEn, onDia, cerradoEn }: VistaProps & { foco: string }) {
   const { desde, hasta } = mesDe(foco);
   const dias: string[] = [];
   for (let f = desde; f <= hasta; f = sumarDias(f, 1)) if (esHabil(f)) dias.push(f);
@@ -149,17 +175,20 @@ function VistaMes({ foco, hoy, libresEn, onDia }: VistaProps & { foco: string })
       {Array.from({ length: vacios }, (_, i) => <div key={`v${i}`} />)}
       {dias.map((f) => {
         const pasado = f < hoy;
-        const n = pasado ? 0 : libresEn(f).length;
+        const cerrado = pasado ? null : cerradoEn(f); // feriado o fuera de plazo: gris, sin libres
+        const n = pasado || cerrado ? 0 : libresEn(f).length;
         return (
           <button
             key={f}
             onClick={() => onDia(f)}
+            title={cerrado?.detalle}
             className={`flex h-20 flex-col items-start justify-between rounded-lg border p-2 text-left transition hover:border-acento ${
               f === hoy ? "border-acento ring-1 ring-acento" : "border-black/10"
-            } ${pasado ? "bg-black/[0.02] text-marca-gris/60" : n > 0 ? "bg-emerald-50" : "bg-white"}`}
+            } ${pasado ? "bg-black/[0.02] text-marca-gris/60" : cerrado ? "bg-black/[0.05] text-marca-gris" : n > 0 ? "bg-emerald-50" : "bg-white"}`}
           >
-            <span className={`text-sm font-semibold ${pasado ? "" : "text-marca"}`}>{Number(f.slice(8))}</span>
-            {!pasado &&
+            <span className={`text-sm font-semibold ${pasado || cerrado ? "" : "text-marca"}`}>{Number(f.slice(8))}</span>
+            {cerrado && <span className="text-[11px] font-semibold text-marca-gris">{cerrado.texto}</span>}
+            {!pasado && !cerrado &&
               (n > 0 ? (
                 <span className="flex items-center gap-1 whitespace-nowrap rounded bg-emerald-500 px-1.5 py-0.5 text-[11px] font-semibold text-white">
                   <CircleParking size={12} className="shrink-0" />
@@ -186,26 +215,30 @@ function VistaSemana({
   onDia,
   onElegir,
   propioEn,
+  cerradoEn,
 }: VistaProps & { lunes: string; onElegir: Elegir; propioEn: (fecha: string) => Propio | null }) {
   return (
     <div className="grid grid-cols-5 gap-1.5">
       {DIAS.map((d, i) => {
         const f = sumarDias(lunes, i);
         const pasado = f < hoy;
-        const libres = pasado ? [] : libresEn(f);
+        const cerrado = pasado ? null : cerradoEn(f); // feriado o fuera de plazo: gris, sin libres
+        const libres = pasado || cerrado ? [] : libresEn(f);
         const propio = pasado ? null : propioEn(f);
         return (
           <div
             key={f}
+            title={cerrado?.detalle}
             className={`flex min-h-48 flex-col gap-1.5 rounded-lg border p-2 ${
               f === hoy ? "border-acento ring-1 ring-acento" : "border-black/10"
-            } ${pasado ? "bg-black/[0.02] text-marca-gris/60" : ""}`}
+            } ${pasado ? "bg-black/[0.02] text-marca-gris/60" : cerrado ? "bg-black/[0.05] text-marca-gris" : ""}`}
           >
             <button onClick={() => onDia(f)} className="flex flex-col items-start rounded text-left hover:text-acento">
               <span className="text-xs font-semibold text-marca-gris">{d}</span>
               <span className={`text-lg font-semibold ${pasado ? "" : "text-marca"}`}>{Number(f.slice(8))}</span>
             </button>
-            {!pasado && libres.length === 0 && !propio && <span className="text-[11px] text-marca-gris">Sin libres</span>}
+            {cerrado && <span className="text-[11px] font-semibold text-marca-gris">{cerrado.texto}</span>}
+            {!pasado && !cerrado && libres.length === 0 && !propio && <span className="text-[11px] text-marca-gris">Sin libres</span>}
             {/* Tu puesto liberado (turquesa claro, no se toma) */}
             {propio && (
               <span
@@ -235,9 +268,10 @@ function VistaSemana({
 }
 
 // Día: los puestos libres dibujados como cajones vacíos sobre asfalto; al tocar uno se abre "¿Quieres tomar…?"
-function VistaDia(props: { fecha: string; hoy: string; libres: Libre[]; onElegir: Elegir; propio: Propio | null }) {
-  const { fecha, hoy, libres, onElegir, propio } = props;
+function VistaDia(props: { fecha: string; hoy: string; libres: Libre[]; onElegir: Elegir; propio: Propio | null; cerrado: Cerrado | null }) {
+  const { fecha, hoy, libres, onElegir, propio, cerrado } = props;
   if (fecha < hoy) return <p className="py-10 text-center text-sm text-marca-gris">Este día ya pasó.</p>;
+  if (cerrado) return <p className="py-10 text-center text-sm text-marca-gris">{cerrado.texto}: {cerrado.detalle}</p>;
   if (libres.length === 0 && !propio) return <p className="py-10 text-center text-sm text-marca-gris">No hay estacionamientos libres este día.</p>;
   return (
     <div className="overflow-hidden rounded-xl shadow-inner" style={ASFALTO}>

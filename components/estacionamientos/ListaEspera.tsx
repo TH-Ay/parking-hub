@@ -19,12 +19,13 @@ type Props = {
   puestosParaRotarEn: (fecha: string) => { id: number; numero: string }[]; // puestos libres para rotar desde esa fecha
   ultimaVez: (nombre: string) => string | null; // ej. "nov 2026"
   onAviso: (texto: string) => void;
+  abierto: boolean; // lo guarda el plano, así no se vuelve a plegar al actualizar la lista
+  onAlternar: () => void;
 };
 
-export default function ListaEspera({ lista: listaBD, candidatos, hoy, puestosParaRotarEn, ultimaVez, onAviso }: Props) {
+export default function ListaEspera({ lista: listaBD, candidatos, hoy, puestosParaRotarEn, ultimaVez, onAviso, abierto, onAlternar }: Props) {
   const router = useRouter();
   const supabase = createClient();
-  const [abierto, setAbierto] = useState(true);
   const [nuevo, setNuevo] = useState("");
   const [editando, setEditando] = useState(false); // editor de la rotación abierto
   // Copia local: los cambios (mover, saltar) se ven al instante mientras se guardan.
@@ -75,7 +76,7 @@ export default function ListaEspera({ lista: listaBD, candidatos, hoy, puestosPa
   return (
     <section className="rounded-xl border border-black/10 bg-white shadow-sm">
       {/* Encabezado: clic para plegar / desplegar */}
-      <button onClick={() => setAbierto(!abierto)} className="flex w-full items-center justify-between gap-2 p-4 text-left">
+      <button onClick={onAlternar} className="flex w-full items-center justify-between gap-2 p-4 text-left">
         <span className="flex items-center gap-2 text-sm font-semibold text-marca">
           <ListOrdered size={16} className="text-acento" /> Lista de espera
           <span className="rounded bg-black/5 px-1.5 text-xs font-normal text-marca-gris">{lista.length}</span>

@@ -31,7 +31,7 @@ export default function FormLiberar({ hoy, personas, soloAsignar = false, paraDu
   const [dia, setDia] = useState(5); // viernes
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState("");
-  const [paraTodos, setParaTodos] = useState(false); // liberación larga que igual puede tomar cualquiera (no va a la rotación)
+  const [paraTodos, setParaTodos] = useState(true); // por defecto lo libre es para todos; desmarcar = va a la rotación
   // La casilla solo aplica a liberaciones largas "para cualquiera" que hace el admin
   const larga = forma === "sinFin" || (forma === "fechas" && esLarga({ desde, hasta }));
   const muestraParaTodos = !soloAsignar && !paraDueno && para === "cualquiera" && larga;
@@ -46,7 +46,7 @@ export default function FormLiberar({ hoy, personas, soloAsignar = false, paraDu
       cadaDia: forma === "semanal" ? dia : undefined,
       motivo: motivo.trim() || undefined,
       para: para === "persona" ? persona : undefined,
-      paraTodos: muestraParaTodos && paraTodos,
+      paraTodos: !muestraParaTodos || paraTodos,
     });
   }
 
@@ -131,13 +131,13 @@ export default function FormLiberar({ hoy, personas, soloAsignar = false, paraDu
         </select>
       )}
 
-      {/* Liberación larga para cualquiera: por defecto va a la rotación (lista de espera) */}
+      {/* Liberación larga para cualquiera: por defecto es para todos; si se desmarca, va a la rotación */}
       {muestraParaTodos && (
         <label className="flex items-start gap-2 rounded-md bg-amber-50 p-2 text-xs text-amber-950">
           <input type="checkbox" checked={paraTodos} onChange={(e) => setParaTodos(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#13a699]" />
           <span>
             Que cualquiera lo pueda tomar día a día (no va a la rotación).
-            <span className="block text-amber-800">Si no lo marcas, queda reservado para la lista de espera.</span>
+            <span className="block text-amber-800">Si lo desmarcas, queda reservado para la lista de espera.</span>
           </span>
         </label>
       )}
