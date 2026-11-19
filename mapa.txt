@@ -1,6 +1,7 @@
 CLAUDE.md - contexto del proyecto e instrucciones para Claude
 AGENTS.md - reglas que genera Next.js (no editar)
 mapa.txt - este mapa de archivos
+CONTEXTO_PROYECTO.md - contexto completo para mejoras (Proyecto Claude)
 .env.example - plantilla de variables de Supabase (copiar como .env.local)
 supabase/schema.sql - script original de la BD (v1, referencia)
 supabase/migracion_v2.sql - rehace la BD: personas, periodos, avisos, reglas nuevas
@@ -62,7 +63,6 @@ components/estacionamientos/CajonEstacionamiento.tsx - un cajón: fijo, rotació
 components/estacionamientos/ZonaEstacionamiento.tsx - grupo del plano (Fijos/Rotación/Libres) sobre asfalto
 components/estacionamientos/PlanoEstacionamientos.tsx - vista admin: pestañas Plano de hoy / Calendario
 components/estacionamientos/CalendarioAdmin.tsx - admin: alertas + calendario semana/mes/año
-components/estacionamientos/personas.local.ts - PRIVADO, YA NO SE USA (se puede borrar)
 components/estacionamientos/fechas.ts - ayudas de fechas (hoy en Chile, mes, día semana)
 components/estacionamientos/TarjetaPuesto.tsx - tarjeta admin: datos, acciones y programado
 components/estacionamientos/FormLiberar.tsx - formulario Liberar: cuándo y para quién

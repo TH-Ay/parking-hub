@@ -13,7 +13,7 @@
 ## Privacidad (desde el minuto cero)
 - El repo TH-Ay/parking-hub es PÚBLICO (16-nov-2026, para Vercel gratis). Ese día se reemplazó su historial por una sola versión limpia (había un nombre real en un comentario antiguo). El historial antiguo quedó SOLO en la rama local "respaldo-historial": NUNCA subirla (git push solo de main).
 - Nombres reales del equipo: viven en Supabase (tabla personas, con RLS y login ACTIVO). Nunca copiarlos a archivos del repo, a mapa.txt, a commits ni a servicios externos.
-- components/estacionamientos/personas.local.ts (ignorado por Git) YA NO SE USA desde el 16-nov-2026: ningún archivo lo importa, así el build en Vercel no depende de él. Se puede borrar.
+- components/estacionamientos/personas.local.ts: BORRADO el 19-nov-2026 (ya no se usaba).
 
 ## Stack
 Next.js 16 (App Router, TypeScript) + Tailwind 4 + Supabase (@supabase/ssr). Luego: GitHub (repo nuevo en la cuenta de la empresa) + Vercel.
