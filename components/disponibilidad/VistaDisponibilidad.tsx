@@ -64,33 +64,6 @@ function CajonTuyo({ numero, fechas = [], onSoltar, sinAuto = false }: { numero?
   );
 }
 
-// Un puesto que me toca por rotación (o asignación): cajón con auto ámbar, el color de "Rotación" en el plano
-function CajonRotacion({ numero, desde, hasta, hoy }: { numero: string; desde: string; hasta: string | null; hoy: string }) {
-  const largo = (f: string) => fechaTexto(f, { weekday: "long", day: "numeric", month: "long" });
-  const enCurso = desde <= hoy;
-  return (
-    <li className="@container overflow-hidden rounded-xl p-3 shadow-inner" style={ASFALTO}>
-      <div className="flex flex-col items-center gap-3 text-center @[15rem]:flex-row @[15rem]:items-stretch @[15rem]:text-left">
-        <div className="flex w-20 shrink-0 flex-col items-center justify-between border-x-2 border-t-2 border-white/70 px-1 pb-1 pt-2">
-          <AutoCenital color="#ef9f27" className="h-14" />
-          <span className="font-mono text-lg font-black tracking-wider text-white/90">{numero}</span>
-        </div>
-        <div className="flex min-w-0 flex-col justify-center">
-          <span
-            className={`mb-1 self-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider @[15rem]:self-start ${
-              enCurso ? "bg-amber-400 text-amber-950" : "bg-white/15 text-white"
-            }`}
-          >
-            {enCurso ? "En curso" : "Próximamente"}
-          </span>
-          <p className="text-sm font-semibold text-white">Te toca el {numero} por rotación</p>
-          <p className="text-xs text-white/70">{hasta ? `Del ${largo(desde)} al ${largo(hasta)}` : `Desde el ${largo(desde)}`}</p>
-        </div>
-      </div>
-    </li>
-  );
-}
-
 export type Reserva = { id: number; numero: string; fecha: string; persona: string; mia: boolean };
 export type Aviso = { id: number; texto: string };
 
@@ -119,11 +92,18 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo, feriados }: Props &
   // Mis rotaciones / asignaciones (en curso o próximas): puestos que el admin o la rotación me asignaron por un periodo
   const misRotaciones = puestos
     .flatMap((p) => [
-      ...p.asignaciones.filter((a) => a.persona === yo.nombre).map((a) => ({ numero: p.numero, desde: a.desde, hasta: a.hasta as string | null })),
-      ...p.liberaciones.filter((l) => l.para === yo.nombre).map((l) => ({ numero: p.numero, desde: l.desde, hasta: l.hasta })),
+      ...p.asignaciones.filter((a) => a.persona === yo.nombre).map((a) => ({ puesto: p, desde: a.desde, hasta: a.hasta as string | null, cadaDia: undefined as number | undefined, rotacion: !!a.rotacion })),
+      ...p.liberaciones.filter((l) => l.para === yo.nombre).map((l) => ({ puesto: p, desde: l.desde, hasta: l.hasta, cadaDia: l.cadaDia, rotacion: !!l.rotacion })),
     ])
     .filter((r) => r.hasta === null || r.hasta >= hoy)
     .sort((a, b) => a.desde.localeCompare(b.desde));
+  type MiRotacion = (typeof misRotaciones)[number];
+  // Días que liberé ("No voy") dentro de una de mis rotaciones
+  const cedidosDe = (r: MiRotacion) =>
+    (r.puesto.cedidos ?? []).filter((c) => c.de === yo.nombre && !c.porPrestamo && c.desde >= r.desde && (!r.hasta || c.desde <= r.hasta));
+  // Un día de un puesto mío por rotación que liberé: no lo puedo tomar (se ve como mío, en turquesa)
+  const miCedidoEn = (fecha: string) =>
+    misRotaciones.find((r) => cedidosDe(r).some((c) => liberadoEn(c, fecha)))?.puesto;
   // Ventana abierta: "¿Quieres tomar…?" o "¿Quieres soltar…?"
   const [ventana, setVentana] = useState<{ accion: "tomar" | "soltar"; puesto: Puesto; fechas: string[] } | null>(null);
   // Autito que viaja del puesto tocado a "Lo tuyo" al tomar con éxito
@@ -216,6 +196,7 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo, feriados }: Props &
     puestos
       .map((p) => ({ puesto: p, estado: estadoEn(p, fecha) }))
       .filter(({ puesto, estado }) => estado.zona === "libres" && puesto.numero !== miFijo && !tomadoPor(puesto.numero, fecha))
+      .filter(({ puesto }) => miCedidoEn(fecha) !== puesto)
       .filter(({ puesto }) => !esDeRotacion(puesto, fecha)) // reservados para la lista de espera: no se toman día a día
       .map(({ puesto, estado }) => ({ puesto, deQuien: estado.deQuien }));
 
@@ -230,16 +211,18 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo, feriados }: Props &
         : null;
 
   const propioEn = (fecha: string): Propio | null => {
-    if (!fijo || estadoEn(fijo, fecha).zona !== "libres") return null;
-    return { puesto: fijo, tomadoPor: tomadoPor(fijo.numero, fecha)?.persona };
+    const mio = fijo && estadoEn(fijo, fecha).zona === "libres" ? fijo : miCedidoEn(fecha);
+    if (!mio) return null;
+    return { puesto: mio, tomadoPor: tomadoPor(mio.numero, fecha)?.persona };
   };
 
   // --- Dueño: "No voy" y recuperar ---
   // Quién ya tomó días de esa liberación (desde hoy)
-  const afectadosDe = (l: Liberacion): Afectado[] =>
+  const afectadosEn = (numero: string | null) => (l: Liberacion): Afectado[] =>
     reservas
-      .filter((r) => r.numero === miFijo && r.fecha >= hoy && liberadoEn(l, r.fecha))
+      .filter((r) => r.numero === numero && r.fecha >= hoy && liberadoEn(l, r.fecha))
       .map((r) => ({ persona: r.persona, fecha: r.fecha }));
+  const afectadosDe = afectadosEn(miFijo);
 
   async function noVoy(l: Liberacion) {
     const { error } = await supabase.from("periodos").insert({
@@ -258,16 +241,40 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo, feriados }: Props &
   // "Al final sí voy": si ya empezó, la liberación termina ayer; si no, se borra.
   // La base de datos le quita el día a quien lo había tomado y le deja el aviso.
   async function recuperar(i: number) {
-    const l = libsFijo[i];
+    await recuperarPeriodo(libsFijo[i], miFijo!);
+  }
+
+  // --- Rotación: "No voy" (esos días quedan para todos) y recuperar. Solo dentro de mi turno (lo revisa la BD) ---
+  async function noVoyRotacion(r: MiRotacion, l: Liberacion) {
+    const desde = l.desde < r.desde ? r.desde : l.desde;
+    const hasta = r.hasta && (!l.hasta || l.hasta > r.hasta) ? r.hasta : l.hasta;
+    if (hasta && hasta < desde) return mostrarAviso("Esas fechas quedan fuera de tu turno.");
+    const { error } = await supabase.from("periodos").insert({
+      estacionamiento_id: r.puesto.id,
+      desde,
+      hasta,
+      dia_semana: r.cadaDia ?? l.cadaDia ?? null, // préstamo "cada martes": solo se liberan sus martes
+      para_id: null,
+      para_todos: true,
+      cede_id: yo.id,
+      motivo: l.motivo ?? null,
+    });
+    if (error) return mostrarAviso(mensajeError(error));
+    mostrarAviso(`Liberaste el ${r.puesto.numero}. Quedó libre para que otra persona lo tome.`);
+    router.refresh();
+  }
+
+  // "Al final sí voy": si ya empezó, la liberación termina ayer; si no, se borra.
+  async function recuperarPeriodo(l: Liberacion | undefined, numero: string) {
     if (!l?.id) return;
-    const afectados = afectadosDe(l);
+    const afectados = afectadosEn(numero)(l);
     const { error } =
       l.desde < hoy
         ? await supabase.from("periodos").update({ hasta: sumarDias(hoy, -1) }).eq("id", l.id)
         : await supabase.from("periodos").delete().eq("id", l.id);
     if (error) return mostrarAviso(mensajeError(error));
     mostrarAviso(
-      afectados.length ? `Recuperaste el ${miFijo}. Le avisamos a ${[...new Set(afectados.map((a) => a.persona))].join(", ")}.` : `Recuperaste el ${miFijo}.`,
+      afectados.length ? `Recuperaste el ${numero}. Le avisamos a ${[...new Set(afectados.map((a) => a.persona))].join(", ")}.` : `Recuperaste el ${numero}.`,
     );
     router.refresh();
   }
@@ -327,14 +334,29 @@ function Vista({ hoy, puestos, reservas, avisos, yo, miFijo, feriados }: Props &
             </div>
           )}
 
-          {/* Mi rotación: "Te toca el 142 por rotación" (se queda todo el periodo) */}
-          {misRotaciones.length > 0 && (
-            <ul className="mt-3 space-y-3">
-              {misRotaciones.map((r) => (
-                <CajonRotacion key={r.numero + r.desde} {...r} hoy={hoy} />
-              ))}
-            </ul>
-          )}
+          {/* Mi rotación: "Te toca el 142 por rotación" (todo el periodo), con "No voy" y los días que liberé */}
+          {misRotaciones.map((r) => {
+            const cedidos = cedidosDe(r);
+            return (
+              <div key={r.puesto.numero + r.desde} className="mt-3">
+                <PanelDueno
+                  numero={r.puesto.numero}
+                  hoy={hoy}
+                  liberaciones={cedidos}
+                  afectadosDe={afectadosEn(r.puesto.numero)}
+                  onNoVoy={(l) => noVoyRotacion(r, l)}
+                  onRecuperar={(i) => recuperarPeriodo(cedidos[i], r.puesto.numero)}
+                  titulo={
+                    r.rotacion ? `Te toca el ${r.puesto.numero} por rotación` : `Te prestaron el ${r.puesto.numero}`
+                  }
+                  detalle={r.hasta ? `Del ${dia(r.desde)} al ${dia(r.hasta)}` : `Desde el ${dia(r.desde)}`}
+                  color="#ef9f27"
+                  limite={{ desde: r.desde, hasta: r.hasta }}
+                  etiqueta={{ texto: r.desde <= hoy ? "En curso" : "Próximamente", resaltada: r.desde <= hoy }}
+                />
+              </div>
+            );
+          })}
 
           {/* Lo que tomé de otros (si tengo fijo o rotación, solo aparece si tomé algo) */}
           {((!miFijo && misRotaciones.length === 0) || misTomados.length > 0) && (

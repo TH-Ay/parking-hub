@@ -16,6 +16,7 @@ export type Persona = {
   correo: string;
   rol: "admin" | "usuario";
   entro: boolean; // ya inició sesión al menos una vez
+  variosPuestos: boolean; // ej. "Clientes": puede tener varios puestos el mismo día
   fijo: string | null; // número de su puesto fijo
   soyYo: boolean; // es quien está usando la app
 };
@@ -55,7 +56,7 @@ export default function VistaPersonas({ personas, puestos }: { personas: Persona
   // Agregar o editar en Supabase (y su puesto fijo). Devuelve el error (texto) o "" si salió bien.
   async function guardar(datos: DatosPersona): Promise<string> {
     const supabase = createClient();
-    const campos = { email: datos.correo, nombre: datos.nombre, rol: datos.rol };
+    const campos = { email: datos.correo, nombre: datos.nombre, rol: datos.rol, varios_puestos: datos.variosPuestos };
     let personaId: string;
     if (editando === "nueva") {
       const { data, error } = await supabase.from("personas").insert(campos).select("id").single();
@@ -178,6 +179,9 @@ export default function VistaPersonas({ personas, puestos }: { personas: Persona
                   <td className="py-2 pr-3 font-medium text-marca">
                     {p.nombre}
                     {p.soyYo && <span className="ml-2 text-xs font-normal text-acento">(tú)</span>}
+                    {p.variosPuestos && (
+                      <span className="ml-2 rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-900">Varios puestos</span>
+                    )}
                   </td>
                   <td className="py-2 pr-3 text-marca-gris">{p.correo}</td>
                   <td className="py-2 pr-3">

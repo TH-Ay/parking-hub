@@ -18,7 +18,7 @@ export default function PersonasPage() {
 async function PersonasDesdeSupabase() {
   const supabase = await createClient();
   const [{ data: personas, error }, { data: puestos }, { data: sesion }] = await Promise.all([
-    supabase.from("personas").select("id, user_id, email, nombre, rol").eq("activa", true),
+    supabase.from("personas").select("id, user_id, email, nombre, rol, varios_puestos").eq("activa", true),
     supabase.from("estacionamientos").select("id, numero, tipo, dueno_id").order("numero"),
     supabase.auth.getUser(),
   ]);
@@ -30,6 +30,7 @@ async function PersonasDesdeSupabase() {
     correo: p.email,
     rol: p.rol === "admin" ? "admin" : "usuario",
     entro: p.user_id !== null,
+    variosPuestos: p.varios_puestos ?? false,
     fijo: puestos?.find((e) => e.dueno_id === p.id)?.numero ?? null,
     soyYo: p.user_id === sesion.user?.id,
   }));

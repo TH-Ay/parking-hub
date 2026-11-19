@@ -4,25 +4,26 @@
 // cada acción escribe en Supabase (accionesBD.ts) y luego se vuelve a pedir la lista (router.refresh).
 import { useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import ZonaEstacionamiento from "./ZonaEstacionamiento";
 import AutoDeJuguete, { type Punto, type Viaje } from "./AutoDeJuguete";
 import CajonEstacionamiento from "./CajonEstacionamiento";
 import TarjetaPuesto from "./TarjetaPuesto";
 import CalendarioAdmin from "./CalendarioAdmin";
-import { fechaCorta, fechaTexto, hoyEnChile, lunesDe, sumarDias, sumarUnMes } from "./fechas";
+import { fechaCorta, fechaTexto, finDelTurno, habil, hoyEnChile, lunesDe, sumarDias } from "./fechas";
 import ListaEspera, { type EnLista } from "./ListaEspera";
 import { accionesBD, type PersonaBD } from "./accionesBD";
-import { esDeRotacion, estadoAdminEn, programadoDe, type Asignacion, type Liberacion, type Puesto, type Zona } from "./datosPrueba";
+import { esDeRotacion, estadoAdminEn, estadoEn, programadoDe, type Asignacion, type Liberacion, type Puesto, type Zona } from "./datosPrueba";
 
 const sinSuscripcion = () => () => {};
 
 type Props = { puestos: Puesto[]; personas: PersonaBD[]; listaEspera: EnLista[]; feriados: Record<string, string> };
 
-// ¿Está libre para rotar desde esa fecha por un mes? (misma regla que libre_para_rotar en Supabase)
+// ¿Está libre para rotar desde esa fecha hasta el fin de su turno? (misma regla que libre_para_rotar_en en Supabase)
 // = nadie asignado en ese mes, y: variable, o fijo con dueño liberado "para cualquiera" sin término o hasta el fin de ese mes o más.
 function libreParaRotar(p: Puesto, fecha: string) {
   if (p.tipo === "especial") return false;
-  const finMes = sumarDias(sumarUnMes(fecha), -1);
+  const finMes = finDelTurno(fecha);
   const choca = (desde: string, hasta: string | null) => desde <= finMes && (hasta === null || hasta >= fecha);
   if (p.asignaciones.some((a) => choca(a.desde, a.hasta)) || p.liberaciones.some((l) => l.para && choca(l.desde, l.hasta))) return false;
   if (p.tipo === "variable" && p.liberaciones.some((l) => !l.para && l.paraTodos && choca(l.desde, l.hasta))) return false;
@@ -43,20 +44,29 @@ export default function PlanoEstacionamientos(props: Props) {
 
 const ZONAS: { zona: Zona; letra: string; color: string; titulo: string; subtitulo: string }[] = [
   { zona: "fijos", letra: "F", color: "bg-sky-200 text-sky-950", titulo: "Fijos", subtitulo: "Con su dueño" },
-  { zona: "rotacion", letra: "R", color: "bg-amber-300 text-amber-950", titulo: "Rotación", subtitulo: "Asignados por un periodo" },
-  { zona: "tomados", letra: "P", color: "bg-violet-200 text-violet-950", titulo: "Prestados", subtitulo: "Alguien lo tiene prestado hoy" },
+  { zona: "rotacion", letra: "R", color: "bg-amber-300 text-amber-950", titulo: "Rotación", subtitulo: "Por la lista de espera (o esperándola)" },
+  { zona: "tomados", letra: "P", color: "bg-violet-200 text-violet-950", titulo: "Prestados", subtitulo: "Alguien lo tiene prestado ese día" },
   { zona: "libres", letra: "L", color: "bg-emerald-200 text-emerald-950", titulo: "Libres", subtitulo: "Disponibles para tomar" },
 ];
+
+// Grupo del plano: igual que la zona, pero un libre que espera la rotación (lista de espera) va en "Rotación"
+function grupoEn(p: Puesto, fecha: string): Zona {
+  const zona = estadoAdminEn(p, fecha).zona;
+  return zona === "libres" && esDeRotacion(p, fecha) ? "rotacion" : zona;
+}
 
 function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy: string }) {
   const router = useRouter();
   const [aviso, setAviso] = useState("");
   const bd = accionesBD(personas);
+  // Día que se mira en el plano (flechas ‹ ›). Las acciones de la ficha siguen usando "hoy".
+  const [dia, setDia] = useState(hoy);
 
   // --- Autito de juguete: si un puesto cambia de zona, un auto maneja del cajón antiguo al nuevo ---
   const raiz = useRef<HTMLDivElement>(null);
   const antes = useRef<Map<string, { zona: Zona; centro: Punto }> | null>(null);
   const [viaje, setViaje] = useState<Viaje | null>(null);
+  const numViaje = useRef(0); // id de cada viaje del autito
 
   // Centro de cada cajón, medido desde la esquina del plano (así no importa el scroll)
   function medir() {
@@ -71,12 +81,22 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
 
   // Guarda en Supabase. Antes anota dónde estaba cada puesto (para animar al que cambie de zona);
   // si sale bien, vuelve a pedir los datos y muestra el aviso; si no, muestra el error.
-  async function guardar(accion: Promise<string>, avisoOk: string) {
+  function anotarPosiciones() {
     const sinMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (raiz.current && !sinMovimiento) {
       const pos = medir();
-      antes.current = new Map(puestos.map((p) => [p.numero, { zona: estadoAdminEn(p, hoy).zona, centro: pos.get(p.numero)!.centro }]));
+      antes.current = new Map(puestos.map((p) => [p.numero, { zona: grupoEn(p, dia), centro: pos.get(p.numero)!.centro }]));
     }
+  }
+
+  // Flechas: día hábil anterior / siguiente (los autitos manejan al grupo que les toca ese día)
+  function cambiarDia(nuevo: string) {
+    anotarPosiciones();
+    setDia(nuevo);
+  }
+
+  async function guardar(accion: Promise<string>, avisoOk: string) {
+    anotarPosiciones();
     const error = await accion;
     if (error) {
       antes.current = null;
@@ -90,13 +110,13 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
   useLayoutEffect(() => {
     const previo = antes.current;
     if (!previo || !raiz.current) return;
-    const movido = puestos.map((p) => ({ p, zona: estadoAdminEn(p, hoy).zona })).find((x) => previo.get(x.p.numero)?.zona !== x.zona);
+    const movido = puestos.map((p) => ({ p, zona: grupoEn(p, dia) })).find((x) => previo.get(x.p.numero)?.zona !== x.zona);
     if (!movido) return; // aún no llegan los datos nuevos (o nada cambió de zona)
     antes.current = null;
     const destino = medir().get(movido.p.numero)!;
     const colores: Record<Zona, string | null> = { fijos: "#378add", rotacion: "#ef9f27", tomados: "#8b5cf6", libres: null };
     setViaje({
-      id: Date.now(),
+      id: ++numViaje.current,
       numero: movido.p.numero,
       desde: previo.get(movido.p.numero)!.centro,
       hasta: destino.centro,
@@ -105,7 +125,7 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
     });
     // Si el destino no se ve, la página baja/sube sola para mostrarlo
     raiz.current.querySelector(`[data-numero="${movido.p.numero}"]`)?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [puestos, hoy]);
+  }, [puestos, dia]);
 
   function mostrarAviso(texto: string) {
     setAviso(texto);
@@ -114,8 +134,26 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
 
   const idDe = (numero: string) => puestos.find((p) => p.numero === numero)!.id!;
 
+  // Prestar a una persona un puesto que otra ya tiene esos días (rotación o préstamo): se pide confirmar.
+  // Devuelve false si el admin no confirma. (La BD hace que la otra persona ceda esos días y le avisa.)
+  function confirmarEncima(numero: string, nueva: string, desde: string, hasta: string | null, cadaDia?: number) {
+    const p = puestos.find((x) => x.numero === numero)!;
+    const quienes = new Set<string>();
+    const fin = hasta ?? sumarDias(desde, 60);
+    for (let f = desde; f <= fin; f = sumarDias(f, 1)) {
+      if (cadaDia !== undefined && new Date(`${f}T12:00:00`).getDay() !== cadaDia) continue;
+      const e = estadoEn(p, f);
+      if ((e.zona === "rotacion" || e.zona === "tomados") && e.quien && e.quien !== nueva) quienes.add(e.quien);
+    }
+    if (quienes.size === 0) return true;
+    return window.confirm(
+      `${[...quienes].join(", ")} tiene el ${numero} algunos de esos días. Si se lo prestas a ${nueva}, esos días dejan de ser suyos y le llega un aviso (los demás días lo sigue teniendo). ¿Continuar?`,
+    );
+  }
+
   // Liberar (fechas / sin término / cada semana; para cualquiera o para una persona)
   function liberar(numero: string, l: Liberacion) {
+    if (l.para && !l.rotacion && !confirmarEncima(numero, l.para, l.desde, l.hasta, l.cadaDia)) return;
     guardar(bd.liberar(idDe(numero), l), l.para ? `El ${numero} quedó liberado para ${l.para}` : `El ${numero} quedó liberado`);
   }
 
@@ -129,9 +167,27 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
   function quitar(numero: string, clave: string) {
     const p = puestos.find((x) => x.numero === numero)!;
     const [tipo, i] = clave.split("-");
-    const periodo = tipo === "lib" ? p.liberaciones[Number(i)] : p.asignaciones[Number(i)];
+    const periodo = tipo === "lib" ? p.liberaciones[Number(i)] : tipo === "ced" ? p.cedidos?.[Number(i)] : p.asignaciones[Number(i)];
     if (!periodo?.id) return;
     guardar(bd.terminar(periodo.id, periodo.desde, hoy), periodo.desde < hoy ? "Terminado desde hoy" : "Cancelado");
+  }
+
+  // En "Programado": el lápiz ✎ cambia la persona de un préstamo o rotación
+  function cambiarPersona(numero: string, clave: string, nueva: string, lugar: "primero" | "final" | null) {
+    const p = puestos.find((x) => x.numero === numero)!;
+    const [tipo, i] = clave.split("-");
+    const periodo = tipo === "lib" ? p.liberaciones[Number(i)] : p.asignaciones[Number(i)];
+    if (!periodo?.id) return;
+    guardar(bd.cambiarPersona(periodo.id, nueva, lugar), `El ${numero} ahora es de ${nueva}`);
+  }
+
+  // En "Programado": etiqueta Préstamo ↔ Rotación de un préstamo a una persona
+  function cambiarRotacion(numero: string, clave: string, valor: boolean) {
+    const p = puestos.find((x) => x.numero === numero)!;
+    const [tipo, i] = clave.split("-");
+    const periodo = tipo === "lib" ? p.liberaciones[Number(i)] : p.asignaciones[Number(i)];
+    if (!periodo?.id) return;
+    guardar(bd.cambiarOrigen(periodo.id, valor), valor ? `El ${numero} ahora cuenta como rotación` : `El ${numero} ahora es un préstamo`);
   }
 
   // En "Programado": cambia una liberación larga entre "para todos" y "para la rotación"
@@ -171,6 +227,7 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
 
   // Asignar por un periodo (variables y fijos sin dueño)
   function asignar(numero: string, a: Asignacion) {
+    if (!a.rotacion && !confirmarEncima(numero, a.persona, a.desde, a.hasta)) return;
     guardar(bd.asignar(idDe(numero), a), `El ${numero} quedó asignado a ${a.persona}`);
   }
 
@@ -189,25 +246,47 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
   // Lista de espera: cuándo le tocó por última vez a alguien (su asignación o liberación-para-ella más reciente)
   const ultimaVez = (nombre: string) => {
     const fechas = puestos.flatMap((p) => [
-      ...p.asignaciones.filter((a) => a.persona === nombre).map((a) => a.desde),
-      ...p.liberaciones.filter((l) => l.para === nombre).map((l) => l.desde),
+      ...p.asignaciones.filter((a) => a.persona === nombre && a.rotacion).map((a) => a.desde),
+      ...p.liberaciones.filter((l) => l.para === nombre && l.rotacion).map((l) => l.desde),
     ]);
     if (fechas.length === 0) return null;
     return fechaTexto(fechas.sort().at(-1)!, { month: "short", year: "numeric" });
   };
+  // Lista de espera en orden (sin quienes saltan el turno): para "Siguiente de la lista" al cambiar la persona
+  const enOrden = [...listaEspera].sort((a, b) => a.orden - b.orden).filter((l) => !l.saltar).map((l) => l.nombre);
+  // "Dar a la siguiente de la lista": entre esas fechas (por defecto desde hoy al fin del turno), a la primera de la lista
+  // que no tenga puesto esos días
+  const tienePrestamo = (nombre: string, desde: string, hasta: string) =>
+    puestos.some(
+      (p) =>
+        p.asignaciones.some((a) => a.persona === nombre && a.desde <= hasta && a.hasta >= desde) ||
+        p.liberaciones.some((l) => l.para === nombre && l.desde <= hasta && (!l.hasta || l.hasta >= desde)),
+    );
+  const siguienteEn = (desde: string, hasta: string) =>
+    [...listaEspera]
+      .sort((a, b) => a.orden - b.orden)
+      .find((l) => !l.saltar && !duenos.has(l.nombre) && !tienePrestamo(l.nombre, desde, hasta)) ?? null;
+  function darSiguiente(numero: string, desde: string, hasta: string) {
+    const s = siguienteEn(desde, hasta);
+    if (!s) return;
+    guardar(bd.darRotacion(idDe(numero), s.personaId, desde, hasta), `El ${numero} ahora es de ${s.nombre} por rotación`);
+  }
   const [elegido, setElegido] = useState(puestos[0].numero);
   const [esperaAbierta, setEsperaAbierta] = useState(false); // "Lista de espera" parte plegada
   const ficha = useRef<HTMLDivElement>(null);
 
   // Al elegir un puesto en el plano: muestra su ficha y sube la pantalla hasta ella
+  // Teléfono: la ficha parte plegada; se abre al tocar un puesto o con su botón (en computador siempre se ve)
+  const [fichaAbierta, setFichaAbierta] = useState(false);
   function elegir(numero: string) {
     setElegido(numero);
+    setFichaAbierta(true);
     const sinMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     ficha.current?.scrollIntoView({ behavior: sinMovimiento ? "auto" : "smooth", block: "start" });
   }
   const [pestana, setPestana] = useState<"plano" | "calendario">("plano");
 
-  const conEstado = puestos.map((p) => ({ puesto: p, estado: estadoAdminEn(p, hoy) }));
+  const conEstado = puestos.map((p) => ({ puesto: p, estado: estadoAdminEn(p, dia) }));
   const actual = conEstado.find((x) => x.puesto.numero === elegido) ?? conEstado[0];
 
   return (
@@ -217,7 +296,7 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
           <h1 className="text-2xl font-semibold text-marca">Estacionamientos</h1>
           <p className="text-sm text-marca-gris">
             {pestana === "plano"
-              ? "Cómo están hoy. Toca un puesto para ver y cambiar su configuración."
+              ? `Cómo están ${dia === hoy ? "hoy" : "ese día"}. Toca un puesto para ver y cambiar su configuración.`
               : "La situación en el tiempo: quién usa cada puesto y qué queda sin usar."}
           </p>
         </div>
@@ -225,7 +304,7 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
         <div className="flex rounded-md border border-black/10 bg-white p-0.5">
           {(
             [
-              ["plano", "Plano de hoy"],
+              ["plano", "Plano del día"],
               ["calendario", "Calendario"],
             ] as const
           ).map(([valor, texto]) => (
@@ -251,13 +330,43 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
           }}
         />
       ) : (
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_13rem] sm:items-start md:grid-cols-[minmax(0,1fr)_15rem] lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
+      // Teléfono y pantallas medianas: ficha arriba y plano abajo (como Disponibilidad). Computador (lg): lado a lado
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
         {/* Plano */}
         <div ref={raiz} className="relative space-y-6">
           {/* Autito de juguete en camino (va por encima del plano) */}
           {viaje && <AutoDeJuguete key={viaje.id} viaje={viaje} onLlegar={() => setViaje(null)} />}
+          {/* Día que se mira: ‹ anterior · fecha · siguiente › (solo lunes a viernes) */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => cambiarDia(habil(sumarDias(dia, -1), -1))}
+              className="rounded-md border border-black/10 bg-white p-1.5 text-marca hover:bg-marca/5"
+              aria-label="Día anterior"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <span className="min-w-44 text-center text-sm font-semibold capitalize text-marca">
+              {dia === hoy ? "Hoy, " : ""}
+              {fechaTexto(dia, { weekday: "long", day: "numeric", month: "short" })}
+            </span>
+            <button
+              onClick={() => cambiarDia(habil(sumarDias(dia, 1), 1))}
+              className="rounded-md border border-black/10 bg-white p-1.5 text-marca hover:bg-marca/5"
+              aria-label="Día siguiente"
+            >
+              <ChevronRight size={18} />
+            </button>
+            {dia !== hoy && (
+              <button onClick={() => cambiarDia(hoy)} className="rounded-md px-2 py-1 text-xs font-semibold text-acento hover:bg-acento/10">
+                Volver a hoy
+              </button>
+            )}
+            {feriados[dia] && (
+              <span className="rounded bg-black/[0.06] px-1.5 py-0.5 text-xs font-semibold text-marca-gris">Feriado · {feriados[dia]}</span>
+            )}
+          </div>
           {ZONAS.map((z) => {
-            const delGrupo = conEstado.filter((x) => x.estado.zona === z.zona);
+            const delGrupo = conEstado.filter((x) => grupoEn(x.puesto, dia) === z.zona);
             return (
               <div key={z.zona} className="space-y-2">
               <ZonaEstacionamiento
@@ -275,20 +384,33 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
                     elegido={puesto.numero === elegido}
                     onElegir={() => elegir(puesto.numero)}
                     escondido={viaje?.numero === puesto.numero}
-                    paraRotacion={esDeRotacion(puesto, hoy)}
+                    paraRotacion={esDeRotacion(puesto, dia)}
                     diaADia={puesto.tipo === "variable" && !!puesto.diaADia}
                   />
                 ))}
               </ZonaEstacionamiento>
-              {z.zona === "tomados" && <PrestadosSemana puestos={puestos} hoy={hoy} onElegir={elegir} />}
-              {z.zona === "libres" && <LibresSemana puestos={puestos} hoy={hoy} onElegir={elegir} feriados={feriados} />}
+              {z.zona === "tomados" && <PrestadosSemana puestos={puestos} hoy={hoy} dia={dia} onElegir={elegir} />}
+              {z.zona === "libres" && <LibresSemana puestos={puestos} hoy={hoy} dia={dia} onElegir={elegir} feriados={feriados} />}
               </div>
             );
           })}
         </div>
 
         {/* Tarjeta del puesto (queda a la vista al bajar) + lista de espera plegable debajo */}
-        <div ref={ficha} className="scroll-mt-6 space-y-4 sm:sticky sm:top-6">
+        <div ref={ficha} className="order-first scroll-mt-6 space-y-4 lg:order-none lg:sticky lg:top-6">
+          {/* Teléfono: barra para plegar / desplegar la ficha */}
+          <button
+            onClick={() => setFichaAbierta(!fichaAbierta)}
+            aria-expanded={fichaAbierta}
+            className="flex w-full items-center justify-between gap-2 rounded-xl border border-black/10 bg-white px-4 py-3 text-left shadow-sm lg:hidden"
+          >
+            <span className="min-w-0 text-sm text-marca">
+              <span className="font-semibold">Estacionamiento {actual.puesto.numero}</span>
+              <span className="text-marca-gris"> · {fichaAbierta ? "Ocultar ficha" : "Ver ficha"}</span>
+            </span>
+            <ChevronDown size={18} className={`shrink-0 text-marca-gris transition-transform ${fichaAbierta ? "rotate-180" : ""}`} />
+          </button>
+          <div className={fichaAbierta ? "" : "hidden lg:block"}>
           <TarjetaPuesto
             key={actual.puesto.numero}
             puesto={actual.puesto}
@@ -307,7 +429,14 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
             onDiaADia={(v) => cambiarDiaADia(actual.puesto.numero, v)}
             onQuitarTomado={(t) => quitarTomado(actual.puesto.numero, t)}
             onParaTodos={(clave, v) => cambiarParaTodos(actual.puesto.numero, clave, v)}
+            listaEspera={enOrden}
+            onCambiarPersona={(clave, nueva, lugar) => cambiarPersona(actual.puesto.numero, clave, nueva, lugar)}
+            onRotacion={(clave, v) => cambiarRotacion(actual.puesto.numero, clave, v)}
+            esperandoRotacion={esDeRotacion(actual.puesto, hoy)}
+            siguienteEn={(desde, hasta) => siguienteEn(desde, hasta)?.nombre ?? null}
+            onDarSiguiente={(desde, hasta) => darSiguiente(actual.puesto.numero, desde, hasta)}
           />
+          </div>
           <ListaEspera
             // al llegar datos nuevos de Supabase, el recuadro se vuelve a montar con la lista real
             key={listaEspera.map((l) => `${l.personaId}:${l.orden}:${l.saltar}`).join("|")}
@@ -334,20 +463,31 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
   );
 }
 
-// Debajo del grupo "Prestados": todos los préstamos de esta semana (lunes a viernes), por día.
+// Debajo del grupo "Prestados": todos los préstamos de esta semana (lunes a viernes), por día:
+// días que alguien tomó y préstamos cortos (2 semanas o menos) que asignó el admin.
 // Los días que ya pasaron se ven en gris. Clic en una línea = abre la ficha de ese puesto.
-function PrestadosSemana({ puestos, hoy, onElegir }: { puestos: Puesto[]; hoy: string; onElegir: (numero: string) => void }) {
-  const lunes = lunesDe(hoy);
+function PrestadosSemana({ puestos, hoy, dia, onElegir }: { puestos: Puesto[]; hoy: string; dia: string; onElegir: (numero: string) => void }) {
+  const lunes = lunesDe(dia); // la semana del día que se mira en el plano
   const viernes = sumarDias(lunes, 4);
-  const lista = puestos
-    .flatMap((p) => (p.tomados ?? []).filter((t) => t.fecha >= lunes && t.fecha <= viernes).map((t) => ({ ...t, numero: p.numero })))
+  const lista = [0, 1, 2, 3, 4]
+    .map((n) => sumarDias(lunes, n))
+    .flatMap((fecha) =>
+      puestos
+        .map((p) => ({ p, e: estadoAdminEn(p, fecha) }))
+        .filter(({ e }) => e.zona === "tomados")
+        .map(({ p, e }) => ({ id: undefined as number | undefined, fecha, numero: p.numero, persona: e.quien! })),
+    )
     .sort((a, b) => a.fecha.localeCompare(b.fecha) || a.numero.localeCompare(b.numero));
+  const [abierto, setAbierto] = useState(false); // parte plegado; el botón muestra el detalle
   return (
     <div className="rounded-xl border border-black/10 bg-white p-4 shadow-sm">
-      <h4 className="text-sm font-semibold text-marca">
-        Prestados esta semana <span className="font-normal text-marca-gris">· {fechaCorta(lunes)} – {fechaCorta(viernes)}</span>
-      </h4>
-      {lista.length === 0 ? (
+      <button onClick={() => setAbierto(!abierto)} className="flex w-full items-center justify-between gap-2 text-left" aria-expanded={abierto}>
+        <h4 className="text-sm font-semibold text-marca">
+          {lunes === lunesDe(hoy) ? "Prestados esta semana" : "Prestados esa semana"} <span className="font-normal text-marca-gris">· {fechaCorta(lunes)} – {fechaCorta(viernes)} · {lista.length}</span>
+        </h4>
+        <ChevronDown size={16} className={`shrink-0 text-marca-gris transition-transform ${abierto ? "rotate-180" : ""}`} />
+      </button>
+      {!abierto ? null : lista.length === 0 ? (
         <p className="mt-1 text-xs text-marca-gris">Nada prestado esta semana</p>
       ) : (
         <ul className="mt-2 divide-y divide-black/5">
@@ -371,15 +511,21 @@ function PrestadosSemana({ puestos, hoy, onElegir }: { puestos: Puesto[]; hoy: s
 
 // Debajo del grupo "Libres": qué puestos quedan libres (sin prestar) cada día de esta semana (lunes a viernes).
 // Verde = cualquiera lo puede tomar; ámbar = reservado para la rotación. Días pasados en gris. Clic = abre la ficha.
-function LibresSemana({ puestos, hoy, onElegir, feriados }: { puestos: Puesto[]; hoy: string; onElegir: (numero: string) => void; feriados: Record<string, string> }) {
-  const lunes = lunesDe(hoy);
+function LibresSemana({ puestos, hoy, dia, onElegir, feriados }: { puestos: Puesto[]; hoy: string; dia: string; onElegir: (numero: string) => void; feriados: Record<string, string> }) {
+  const lunes = lunesDe(dia); // la semana del día que se mira en el plano
   const dias = [0, 1, 2, 3, 4].map((n) => sumarDias(lunes, n));
   const libresDe = (fecha: string) => puestos.filter((p) => estadoAdminEn(p, fecha).zona === "libres");
+  const [abierto, setAbierto] = useState(false); // parte plegado; el botón muestra el detalle
   return (
     <div className="rounded-xl border border-black/10 bg-white p-4 shadow-sm">
-      <h4 className="text-sm font-semibold text-marca">
-        Libres esta semana <span className="font-normal text-marca-gris">· {fechaCorta(dias[0])} – {fechaCorta(dias[4])}</span>
-      </h4>
+      <button onClick={() => setAbierto(!abierto)} className="flex w-full items-center justify-between gap-2 text-left" aria-expanded={abierto}>
+        <h4 className="text-sm font-semibold text-marca">
+          {lunes === lunesDe(hoy) ? "Libres esta semana" : "Libres esa semana"} <span className="font-normal text-marca-gris">· {fechaCorta(dias[0])} – {fechaCorta(dias[4])}</span>
+        </h4>
+        <ChevronDown size={16} className={`shrink-0 text-marca-gris transition-transform ${abierto ? "rotate-180" : ""}`} />
+      </button>
+      {abierto && (
+      <>
       <ul className="mt-2 divide-y divide-black/5">
         {dias.map((fecha) => {
           const libres = libresDe(fecha);
@@ -415,6 +561,8 @@ function LibresSemana({ puestos, hoy, onElegir, feriados }: { puestos: Puesto[];
         <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded bg-emerald-200" /> Para todos</span>
         <span className="flex items-center gap-1"><i className="h-2.5 w-2.5 rounded bg-amber-200" /> Para rotación</span>
       </p>
+      </>
+      )}
     </div>
   );
 }
