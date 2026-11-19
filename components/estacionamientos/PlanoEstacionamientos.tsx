@@ -276,8 +276,11 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
   const ficha = useRef<HTMLDivElement>(null);
 
   // Al elegir un puesto en el plano: muestra su ficha y sube la pantalla hasta ella
+  // Teléfono: la ficha parte plegada; se abre al tocar un puesto o con su botón (en computador siempre se ve)
+  const [fichaAbierta, setFichaAbierta] = useState(false);
   function elegir(numero: string) {
     setElegido(numero);
+    setFichaAbierta(true);
     const sinMovimiento = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     ficha.current?.scrollIntoView({ behavior: sinMovimiento ? "auto" : "smooth", block: "start" });
   }
@@ -327,7 +330,8 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
           }}
         />
       ) : (
-      <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_13rem] sm:items-start md:grid-cols-[minmax(0,1fr)_15rem] lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-6">
+      // Teléfono y pantallas medianas: ficha arriba y plano abajo (como Disponibilidad). Computador (lg): lado a lado
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_20rem] lg:items-start lg:gap-6">
         {/* Plano */}
         <div ref={raiz} className="relative space-y-6">
           {/* Autito de juguete en camino (va por encima del plano) */}
@@ -393,7 +397,20 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
         </div>
 
         {/* Tarjeta del puesto (queda a la vista al bajar) + lista de espera plegable debajo */}
-        <div ref={ficha} className="scroll-mt-6 space-y-4 sm:sticky sm:top-6">
+        <div ref={ficha} className="order-first scroll-mt-6 space-y-4 lg:order-none lg:sticky lg:top-6">
+          {/* Teléfono: barra para plegar / desplegar la ficha */}
+          <button
+            onClick={() => setFichaAbierta(!fichaAbierta)}
+            aria-expanded={fichaAbierta}
+            className="flex w-full items-center justify-between gap-2 rounded-xl border border-black/10 bg-white px-4 py-3 text-left shadow-sm lg:hidden"
+          >
+            <span className="min-w-0 text-sm text-marca">
+              <span className="font-semibold">Estacionamiento {actual.puesto.numero}</span>
+              <span className="text-marca-gris"> · {fichaAbierta ? "Ocultar ficha" : "Ver ficha"}</span>
+            </span>
+            <ChevronDown size={18} className={`shrink-0 text-marca-gris transition-transform ${fichaAbierta ? "rotate-180" : ""}`} />
+          </button>
+          <div className={fichaAbierta ? "" : "hidden lg:block"}>
           <TarjetaPuesto
             key={actual.puesto.numero}
             puesto={actual.puesto}
@@ -419,6 +436,7 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
             siguienteEn={(desde, hasta) => siguienteEn(desde, hasta)?.nombre ?? null}
             onDarSiguiente={(desde, hasta) => darSiguiente(actual.puesto.numero, desde, hasta)}
           />
+          </div>
           <ListaEspera
             // al llegar datos nuevos de Supabase, el recuadro se vuelve a montar con la lista real
             key={listaEspera.map((l) => `${l.personaId}:${l.orden}:${l.saltar}`).join("|")}

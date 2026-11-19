@@ -24,6 +24,7 @@ Next.js 16 (App Router, TypeScript) + Tailwind 4 + Supabase (@supabase/ssr). Lue
 ## Negocio (MVP)
 - 20 estacionamientos con número: 142, 143, 148, 150, 152, 212 (-3), 302-311, 314, 331, 334, 335.
 - Pisos: 142–152 y 212 en subterráneo -3; 302–335 en -4.
+- Estacionamientos en teléfono (19-nov-2026): bajo lg la ficha del puesto (y lista de espera) va arriba a todo el ancho y el plano abajo; lado a lado solo desde lg (igual que Disponibilidad). Bajo lg la ficha parte PLEGADA (barra "Estacionamiento X · Ver ficha"); se abre al tocar un puesto o con la barra (fichaAbierta).
 - Teléfono (pedido 17-nov-2026): se ve IGUAL que en el computador, achicado. app/layout.tsx exporta viewport { width: 540, initialScale: undefined } + script (Script beforeInteractive) que pone initial-scale = ancho de pantalla ÷ 540. El diseño horizontal (menú a la izquierda, columnas lado a lado) se activa desde sm, que en app/globals.css se cambió a 540 px (@theme --breakpoint-sm: 33.75rem). Se probó 1024, 768 y 640: quedaba chico. Para volver a la versión adaptada al teléfono, borrar ese export.
 - Disponibilidad en teléfono (17-nov-2026): bajo lg (1024 px) "Lo tuyo" va arriba a todo el ancho y el calendario abajo; la "P" del título se oculta. Lado a lado solo desde lg.
 - Menú lateral PLEGABLE (17-nov-2026, components/Sidebar.tsx): plegado = solo íconos; por defecto plegado en teléfono/pantallas medianas y desplegado en computador (≥ 1024 px); el botón "Plegar" lo cambia y se recuerda en localStorage ("menu-lateral").
