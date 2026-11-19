@@ -1,4 +1,4 @@
-// "Lo tuyo" del DUEÑO de un fijo: su puesto (con botón "No voy") y la lista de días que liberó.
+// "Lo tuyo" del DUEÑO de un fijo (o de quien tiene un puesto por ROTACIÓN): su puesto (con botón "No voy") y los días que liberó.
 // Cada liberación tiene ✕ para recuperarla ("al final sí voy"), aunque alguien ya lo haya tomado:
 // en ese caso se pide confirmar y a esa persona le llega el aviso "Al final sí voy".
 import { useState } from "react";
@@ -18,6 +18,12 @@ type Props = {
   afectadosDe: (l: Liberacion) => Afectado[];
   onNoVoy: (l: Liberacion) => void;
   onRecuperar: (indice: number) => void;
+  // Para la rotación: otro título, texto, color del auto y etiqueta ("En curso" / "Próximamente")
+  titulo?: string;
+  detalle?: string;
+  color?: string;
+  etiqueta?: { texto: string; resaltada: boolean };
+  limite?: { desde: string; hasta: string | null }; // rotación: "No voy" solo dentro del turno
 };
 
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -34,7 +40,7 @@ function textoLiberacion(l: Liberacion) {
   return l.hasta && l.hasta !== l.desde ? `${corta(l.desde)} – ${corta(l.hasta)}` : corta(l.desde);
 }
 
-export default function PanelDueno({ numero, hoy, liberaciones, afectadosDe, onNoVoy, onRecuperar }: Props) {
+export default function PanelDueno({ numero, hoy, liberaciones, afectadosDe, onNoVoy, onRecuperar, titulo, detalle, color = "#378add", etiqueta, limite }: Props) {
   const [formAbierto, setFormAbierto] = useState(false);
   const [porRecuperar, setPorRecuperar] = useState<number | null>(null); // índice de la liberación a recuperar
 
@@ -48,12 +54,21 @@ export default function PanelDueno({ numero, hoy, liberaciones, afectadosDe, onN
       <div className="@container rounded-xl p-3 shadow-inner" style={ASFALTO}>
         <div className="flex flex-col items-center gap-3 text-center @[15rem]:flex-row @[15rem]:text-left">
           <div className="flex w-20 shrink-0 flex-col items-center justify-between border-x-2 border-t-2 border-white/70 px-1 pb-1 pt-2">
-            <AutoCenital color="#378add" className="h-14" />
+            <AutoCenital color={color} className="h-14" />
             <span className="font-mono text-lg font-black tracking-wider text-white/90">{numero}</span>
           </div>
           <div className="flex min-w-0 flex-col">
-            <p className="text-sm font-semibold text-white">Tu puesto fijo</p>
-            <p className="text-xs text-white/70">El {numero} es tuyo todos los días.</p>
+            {etiqueta && (
+              <span
+                className={`mb-1 self-center rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider @[15rem]:self-start ${
+                  etiqueta.resaltada ? "bg-amber-400 text-amber-950" : "bg-white/15 text-white"
+                }`}
+              >
+                {etiqueta.texto}
+              </span>
+            )}
+            <p className="text-sm font-semibold text-white">{titulo ?? "Tu puesto fijo"}</p>
+            <p className="text-xs text-white/70">{detalle ?? `El ${numero} es tuyo todos los días.`}</p>
             <button
               onClick={() => setFormAbierto(true)}
               className="mt-2 self-center rounded-md border border-white/40 px-2.5 py-1 text-xs font-semibold text-white hover:bg-white/10 @[15rem]:self-start"
@@ -68,6 +83,7 @@ export default function PanelDueno({ numero, hoy, liberaciones, afectadosDe, onN
         <FormLiberar
           paraDueno
           hoy={hoy}
+          limite={limite}
           personas={[]}
           onCancelar={() => setFormAbierto(false)}
           onGuardar={(l) => {
@@ -81,7 +97,7 @@ export default function PanelDueno({ numero, hoy, liberaciones, afectadosDe, onN
       <div>
         <h3 className="text-sm font-semibold text-marca">Días que liberaste</h3>
         {vigentes.length === 0 ? (
-          <p className="mt-1 text-xs text-marca-gris">Ninguno. Usas tu puesto todos los días.</p>
+          <p className="mt-1 text-xs text-marca-gris">Ninguno. Usas tu puesto todos los días{titulo ? " de tu turno" : ""}.</p>
         ) : (
           <ul className="mt-2 space-y-1.5">
             {vigentes.map(({ l, i }) => {

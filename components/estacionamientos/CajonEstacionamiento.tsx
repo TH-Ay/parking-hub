@@ -35,7 +35,7 @@ export default function CajonEstacionamiento({ puesto, estado, elegido, onElegir
         </span>
         {/* Reservado para la lista de espera: nadie lo toma día a día */}
         {paraRotacion && (
-          <span className="rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-amber-950">Para rotación</span>
+          <span className="rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold text-amber-950">Esperando rotación</span>
         )}
         {diaADia && !paraRotacion && (
           <span className="rounded bg-emerald-300 px-1.5 py-0.5 text-[10px] font-bold text-emerald-950">Día a día</span>

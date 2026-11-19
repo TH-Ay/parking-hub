@@ -59,3 +59,22 @@ export function diaSemana(fecha: string): number {
 export function fechaCorta(fecha: string): string {
   return new Date(`${fecha}T12:00:00`).toLocaleDateString("es-CL", { day: "numeric", month: "short" });
 }
+
+// TURNOS DE ROTACIÓN (misma regla que Supabase, migracion_v2_16.sql): cada semana (lunes a viernes) es del mes
+// donde cae su jueves. Turno de un mes = del lunes de su primera semana al viernes antes del turno siguiente.
+// Ej.: diciembre 2026 = lun 30 nov → vie 1 ene; enero 2027 = lun 4 ene → vie 29 ene.
+const isoDia = (f: string) => diaSemana(f) || 7; // 1 = lunes ... 7 = domingo
+
+function inicioTurnoDelMes(mes: string): string {
+  const primerJueves = sumarDias(mes, (4 - isoDia(mes) + 7) % 7);
+  return sumarDias(primerJueves, -3);
+}
+
+// Turno que contiene esa fecha
+export function turnoDe(fecha: string): { desde: string; hasta: string } {
+  const mes = `${sumarDias(fecha, 4 - isoDia(fecha)).slice(0, 7)}-01`;
+  return { desde: inicioTurnoDelMes(mes), hasta: sumarDias(inicioTurnoDelMes(sumarUnMes(mes)), -3) };
+}
+
+export const finDelTurno = (fecha: string) => turnoDe(fecha).hasta;
+export const turnoSiguiente = (fecha: string) => turnoDe(sumarDias(turnoDe(fecha).hasta, 3));

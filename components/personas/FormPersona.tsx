@@ -2,7 +2,7 @@
 import { useState } from "react";
 import type { Persona } from "./VistaPersonas";
 
-export type DatosPersona = { nombre: string; correo: string; rol: Persona["rol"]; fijoId: number | null };
+export type DatosPersona = { nombre: string; correo: string; rol: Persona["rol"]; fijoId: number | null; variosPuestos: boolean };
 
 type Props = {
   persona: Persona | null; // null = agregar nueva
@@ -20,6 +20,7 @@ export default function FormPersona(props: Props) {
   const [correo, setCorreo] = useState(persona?.correo ?? "");
   const [rol, setRol] = useState<Persona["rol"]>(persona?.rol ?? "usuario");
   const [fijoId, setFijoId] = useState<number | null>(fijoActual);
+  const [variosPuestos, setVariosPuestos] = useState(persona?.variosPuestos ?? false);
   const cambiaFijo = fijoId !== fijoActual;
   const [error, setError] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -31,7 +32,7 @@ export default function FormPersona(props: Props) {
     if (!/^[^\s@]+@thehouse\.cl$/.test(c)) return setError("El correo debe terminar en @thehouse.cl.");
     if (correosUsados.includes(c)) return setError("Ya hay otra persona con ese correo.");
     setGuardando(true);
-    setError(await onGuardar({ nombre: n, correo: c, rol, fijoId }));
+    setError(await onGuardar({ nombre: n, correo: c, rol, fijoId, variosPuestos }));
     setGuardando(false);
   }
 
@@ -80,6 +81,15 @@ export default function FormPersona(props: Props) {
                   : "Puede tomar, soltar y liberar su puesto."}
             </p>
           </div>
+
+          {/* Varios puestos el mismo día (ej. "Clientes"): no aplica la regla de un puesto por día */}
+          <label className="flex items-start gap-2 text-xs text-marca">
+            <input type="checkbox" checked={variosPuestos} onChange={(e) => setVariosPuestos(e.target.checked)} className="mt-0.5" />
+            <span>
+              <span className="font-semibold">Puede tener varios puestos el mismo día</span>
+              <span className="block text-marca-gris">Para cuentas como &quot;Clientes&quot;: el admin le presta varios puestos a la vez.</span>
+            </span>
+          </label>
 
           {/* Puesto fijo (máximo 1 por persona) */}
           <label className="block text-xs font-semibold text-marca">

@@ -4,12 +4,14 @@
 import { useState } from "react";
 // Con soloAsignar = true sirve para "Asignar por un periodo" (variables): solo fechas y persona.
 import { esLarga, type Liberacion } from "./datosPrueba";
+import { fechaCorta } from "./fechas";
 
 type Props = {
   hoy: string;
   personas: string[]; // quienes se pueden elegir (sin puesto fijo)
   soloAsignar?: boolean;
   paraDueno?: boolean; // "No voy" del dueño: solo "Unas fechas" o "Cada semana", siempre para cualquiera
+  limite?: { desde: string; hasta: string | null }; // rotación: solo se eligen fechas dentro del turno
   onGuardar: (l: Liberacion) => void;
   onCancelar: () => void;
 };
@@ -22,16 +24,20 @@ const DIAS_HABILES = [
   [5, "Viernes"],
 ] as const;
 
-export default function FormLiberar({ hoy, personas, soloAsignar = false, paraDueno = false, onGuardar, onCancelar }: Props) {
+export default function FormLiberar({ hoy, personas, soloAsignar = false, paraDueno = false, limite, onGuardar, onCancelar }: Props) {
+  // Primer y último día que se pueden elegir (con límite = el turno de rotación, desde hoy)
+  const minimo = limite && limite.desde > hoy ? limite.desde : hoy;
+  const maximo = limite?.hasta ?? undefined;
   const [forma, setForma] = useState<"fechas" | "sinFin" | "semanal">("fechas");
   const [para, setPara] = useState<"cualquiera" | "persona">(soloAsignar ? "persona" : "cualquiera");
   const [persona, setPersona] = useState("");
-  const [desde, setDesde] = useState(hoy);
-  const [hasta, setHasta] = useState(hoy);
+  const [desde, setDesde] = useState(minimo);
+  const [hasta, setHasta] = useState(minimo);
   const [dia, setDia] = useState(5); // viernes
   const [motivo, setMotivo] = useState("");
   const [error, setError] = useState("");
-  const [paraTodos, setParaTodos] = useState(true); // por defecto lo libre es para todos; desmarcar = va a la rotación
+  const [paraTodos, setParaTodos] = useState(true);
+  const [rotacion, setRotacion] = useState(false); // préstamo a una persona: ¿cuenta como su turno de la lista de espera? // por defecto lo libre es para todos; desmarcar = va a la rotación
   // La casilla solo aplica a liberaciones largas "para cualquiera" que hace el admin
   const larga = forma === "sinFin" || (forma === "fechas" && esLarga({ desde, hasta }));
   const muestraParaTodos = !soloAsignar && !paraDueno && para === "cualquiera" && larga;
@@ -39,6 +45,9 @@ export default function FormLiberar({ hoy, personas, soloAsignar = false, paraDu
   function guardar() {
     if (!desde || desde < hoy) return setError("La fecha de inicio no puede ser anterior a hoy.");
     if (forma === "fechas" && (!hasta || hasta < desde)) return setError("La fecha de término debe ser igual o posterior al inicio.");
+    const fin = forma === "fechas" ? hasta : desde;
+    if (limite && (desde < minimo || (maximo && fin > maximo)))
+      return setError(`Elige días dentro de tu turno: del ${fechaCorta(minimo)}${maximo ? ` al ${fechaCorta(maximo)}` : " en adelante"}.`);
     if (para === "persona" && !persona) return setError(soloAsignar ? "Elige a quién se le asigna." : "Elige a qué persona se le libera.");
     onGuardar({
       desde,
@@ -47,6 +56,7 @@ export default function FormLiberar({ hoy, personas, soloAsignar = false, paraDu
       motivo: motivo.trim() || undefined,
       para: para === "persona" ? persona : undefined,
       paraTodos: !muestraParaTodos || paraTodos,
+      rotacion: para === "persona" && rotacion,
     });
   }
 
@@ -105,12 +115,12 @@ export default function FormLiberar({ hoy, personas, soloAsignar = false, paraDu
       <div className="flex gap-2">
         <label className="block flex-1 text-xs text-marca">
           {forma === "semanal" ? "A partir del" : "Desde"}
-          <input type="date" value={desde} min={hoy} onChange={(e) => setDesde(e.target.value)} className={`${campo} mt-1`} />
+          <input type="date" value={desde} min={minimo} max={maximo} onChange={(e) => setDesde(e.target.value)} className={`${campo} mt-1`} />
         </label>
         {forma === "fechas" && (
           <label className="block flex-1 text-xs text-marca">
             Hasta
-            <input type="date" value={hasta} min={desde} onChange={(e) => setHasta(e.target.value)} className={`${campo} mt-1`} />
+            <input type="date" value={hasta} min={desde} max={maximo} onChange={(e) => setHasta(e.target.value)} className={`${campo} mt-1`} />
           </label>
         )}
       </div>
@@ -131,15 +141,26 @@ export default function FormLiberar({ hoy, personas, soloAsignar = false, paraDu
         </select>
       )}
 
-      {/* Liberación larga para cualquiera: por defecto es para todos; si se desmarca, va a la rotación */}
-      {muestraParaTodos && (
+      {/* Préstamo a una persona: por defecto es Préstamo; encendido = Rotación (pasa al final de la lista de espera) */}
+      {para === "persona" && (
         <label className="flex items-start gap-2 rounded-md bg-amber-50 p-2 text-xs text-amber-950">
-          <input type="checkbox" checked={paraTodos} onChange={(e) => setParaTodos(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#13a699]" />
+          <input type="checkbox" checked={rotacion} onChange={(e) => setRotacion(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[#13a699]" />
           <span>
-            Que cualquiera lo pueda tomar día a día (no va a la rotación).
-            <span className="block text-amber-800">Si lo desmarcas, queda reservado para la lista de espera.</span>
+            Es rotación (cuenta para la lista de espera)
+            <span className="block text-amber-800">Apagado = préstamo: va en Prestados y no mueve la lista. Encendido: la persona pasa al final de la lista.</span>
           </span>
         </label>
+      )}
+
+      {/* Liberación larga para cualquiera: por defecto es para todos; si se desmarca, va a la rotación */}
+      {muestraParaTodos && (
+        <>
+          <p className="text-xs font-semibold text-marca">¿Quién lo usa?</p>
+          <div className="flex gap-1.5">
+            {boton(paraTodos, "Lo toma cualquiera, día a día", () => setParaTodos(true))}
+            {boton(!paraTodos, "Espera la rotación (lista de espera)", () => setParaTodos(false))}
+          </div>
+        </>
       )}
 
       <label className="block text-xs text-marca">

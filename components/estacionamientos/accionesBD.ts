@@ -25,18 +25,39 @@ export function accionesBD(personas: PersonaBD[]) {
           para_id: idDe(l.para),
           motivo: l.motivo ?? null,
           para_todos: l.paraTodos ?? true,
+          origen: l.rotacion ? "rotacion" : "manual",
         }),
       ),
 
     // Asignar por un periodo (variables y fijos sin dueño)
     asignar: (estId: number, a: Asignacion) =>
-      resultado(supabase.from("periodos").insert({ estacionamiento_id: estId, desde: a.desde, hasta: a.hasta, para_id: idDe(a.persona) })),
+      resultado(
+        supabase.from("periodos").insert({
+          estacionamiento_id: estId,
+          desde: a.desde,
+          hasta: a.hasta,
+          para_id: idDe(a.persona),
+          origen: a.rotacion ? "rotacion" : "manual",
+        }),
+      ),
+
+    // "Dar a la siguiente de la lista" (un puesto): la BD asigna como rotación y la pasa al final de la lista
+    darRotacion: (estId: number, personaId: string, desde: string, hasta: string) =>
+      resultado(supabase.rpc("asignar_rotacion", { p_items: [{ estacionamiento_id: estId, persona_id: personaId, desde, hasta }] })),
+
+    // Etiqueta en "Programado": Préstamo ↔ Rotación (solo corrige la marca; no mueve la lista de espera)
+    cambiarOrigen: (periodoId: number, rotacion: boolean) =>
+      resultado(supabase.from("periodos").update({ origen: rotacion ? "rotacion" : "manual" }).eq("id", periodoId)),
 
     // La ✕ de "Programado" = terminar antes: si ya empezó, termina ayer (queda el historial); si no, se borra
     terminar: (periodoId: number, desde: string, hoy: string) =>
       desde < hoy
         ? resultado(supabase.from("periodos").update({ hasta: sumarDias(hoy, -1) }).eq("id", periodoId))
         : resultado(supabase.from("periodos").delete().eq("id", periodoId)),
+
+    // Cambiar la persona de un préstamo o rotación (la BD corta lo que ya pasó, avisa y mueve la lista de espera)
+    cambiarPersona: (periodoId: number, nueva: string, lugar: "primero" | "final" | null) =>
+      resultado(supabase.rpc("cambiar_persona", { p_periodo: periodoId, p_nueva: idDe(nueva), p_lugar: lugar })),
 
     // Liberación larga de un fijo: para todos (true) o para la rotación (false)
     cambiarParaTodos: (periodoId: number, valor: boolean) =>

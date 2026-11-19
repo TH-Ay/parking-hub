@@ -5,7 +5,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { mensajeError } from "@/lib/errores";
-import { sumarDias, sumarUnMes } from "./fechas";
+import { finDelTurno, turnoSiguiente } from "./fechas";
 import type { EnLista } from "./ListaEspera";
 
 type Fila = { estId: number; numero: string; personaId: string; desde: string; hasta: string };
@@ -18,16 +18,17 @@ type Props = {
   onListo: (texto: string, ok: boolean) => void;
 };
 
-// Propuesta por defecto para una fecha: cada puesto libre → el siguiente de la lista (sin los que se saltan), por un mes
+// Propuesta por defecto para una fecha: cada puesto libre → el siguiente de la lista (sin los que se saltan), hasta el fin del turno
 function propuesta(fecha: string, lista: EnLista[], puestos: { id: number; numero: string }[]): Fila[] {
   const siguientes = lista.filter((l) => !l.saltar);
-  const hasta = sumarDias(sumarUnMes(fecha), -1);
+  const hasta = finDelTurno(fecha);
   return puestos.map((p, i) => ({ estId: p.id, numero: p.numero, personaId: siguientes[i]?.personaId ?? "", desde: fecha, hasta }));
 }
 
 export default function EditorRotacion({ hoy, lista, puestosParaRotarEn, onCancelar, onListo }: Props) {
-  const [fecha, setFecha] = useState(hoy);
-  const [filas, setFilas] = useState<Fila[]>(() => propuesta(hoy, lista, puestosParaRotarEn(hoy)));
+  // Por defecto: el próximo turno mensual (ej. lun 30 nov → vie 1 ene)
+  const [fecha, setFecha] = useState(() => turnoSiguiente(hoy).desde);
+  const [filas, setFilas] = useState<Fila[]>(() => propuesta(fecha, lista, puestosParaRotarEn(fecha)));
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
@@ -69,7 +70,7 @@ export default function EditorRotacion({ hoy, lista, puestosParaRotarEn, onCance
           Hasta
           <input
             type="date"
-            value={filas[0]?.hasta ?? sumarDias(sumarUnMes(fecha), -1)}
+            value={filas[0]?.hasta ?? finDelTurno(fecha)}
             min={fecha}
             onChange={(e) => e.target.value && setFilas((fs) => fs.map((f) => ({ ...f, hasta: e.target.value })))}
             className={`${campo} w-auto`}

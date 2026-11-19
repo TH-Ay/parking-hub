@@ -17,6 +17,14 @@ supabase/migracion_v2_7.sql - variables "día a día" (no van a rotación)
 supabase/migracion_v2_8.sql - admin quita día tomado (con aviso)
 supabase/migracion_v2_9.sql - lo libre es para todos por defecto
 supabase/migracion_v2_10.sql - feriados, plazo 2 semanas, asignar gana, bajas
+supabase/migracion_v2_11.sql - rotación: "No voy" libera días para todos
+supabase/migracion_v2_12.sql - personas con varios puestos el mismo día
+supabase/migracion_v2_13.sql - "No voy" de préstamo semanal: solo su día
+supabase/migracion_v2_14.sql - admin cambia la persona de un préstamo
+supabase/migracion_v2_15.sql - préstamo vs rotación; prestar encima de rotación
+supabase/migracion_v2_16.sql - turnos mensuales de rotación, reparto semana antes
+supabase/migracion_v2_17.sql - lista de dueños para el recordatorio (con clave)
+supabase/recordatorio_apps_script.gs - Apps Script: correo semanal a dueños de fijos
 .env.local - variables reales de Supabase (NO se sube a GitHub)
 package.json - dependencias y comandos (npm run dev)
 app/layout.tsx - marco común de todas las páginas
@@ -42,7 +50,7 @@ components/disponibilidad/VistaDisponibilidad.tsx - usuario: calendario (2/3) + 
 components/disponibilidad/AutoViajero.tsx - autito que viaja a "Lo tuyo" al tomar
 components/disponibilidad/CalendarioDisponibles.tsx - calendario de libres: mes, semana, día
 components/disponibilidad/ModalTomar.tsx - ventana "¿Quieres tomar/soltar el …?" con confirmar
-components/disponibilidad/PanelDueno.tsx - dueño: su fijo, "No voy" y recuperar
+components/disponibilidad/PanelDueno.tsx - dueño o rotación: "No voy" y recuperar
 app/(app)/personas/page.tsx - página Personas: lee personas desde Supabase (solo admin)
 components/personas/VistaPersonas.tsx - lista del equipo; agrega, edita y da de baja en Supabase
 components/personas/FormPersona.tsx - ventana agregar/editar persona (correo @thehouse.cl)
