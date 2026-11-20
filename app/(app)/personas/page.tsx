@@ -2,6 +2,7 @@
 import { Suspense } from "react";
 import VistaPersonas, { type Persona, type PuestoResumen } from "@/components/personas/VistaPersonas";
 import { SoloAdmin } from "@/lib/rol";
+import { aRol } from "@/lib/roles";
 import { createClient } from "@/lib/supabase/server";
 
 export default function PersonasPage() {
@@ -28,7 +29,7 @@ async function PersonasDesdeSupabase() {
     id: p.id,
     nombre: p.nombre,
     correo: p.email,
-    rol: p.rol === "admin" ? "admin" : "usuario",
+    rol: aRol(p.rol),
     entro: p.user_id !== null,
     variosPuestos: p.varios_puestos ?? false,
     fijo: puestos?.find((e) => e.dueno_id === p.id)?.numero ?? null,

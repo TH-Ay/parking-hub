@@ -2,6 +2,7 @@
 // Vista PERSONAS (solo admin): lista del equipo con buscador y filtros; agregar, editar y dar de baja.
 // Los datos llegan desde Supabase (app/(app)/personas/page.tsx). Al guardar, se escribe en Supabase
 // y se vuelve a pedir la lista (router.refresh). El puesto fijo solo se muestra: se asigna en Estacionamientos.
+import { NOMBRE_ROL, type Rol } from "@/lib/roles";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -14,7 +15,7 @@ export type Persona = {
   id: string;
   nombre: string;
   correo: string;
-  rol: "admin" | "usuario";
+  rol: Rol;
   entro: boolean; // ya inició sesión al menos una vez
   variosPuestos: boolean; // ej. "Clientes": puede tener varios puestos el mismo día
   fijo: string | null; // número de su puesto fijo
@@ -186,7 +187,7 @@ export default function VistaPersonas({ personas, puestos }: { personas: Persona
                   <td className="py-2 pr-3 text-marca-gris">{p.correo}</td>
                   <td className="py-2 pr-3">
                     <span className={`rounded px-2 py-0.5 text-xs font-semibold ${p.rol === "admin" ? "bg-marca text-white" : "bg-black/5 text-marca"}`}>
-                      {p.rol === "admin" ? "Admin" : "Usuario"}
+                      {NOMBRE_ROL[p.rol]}
                     </span>
                   </td>
                   <td className="py-2 pr-3">

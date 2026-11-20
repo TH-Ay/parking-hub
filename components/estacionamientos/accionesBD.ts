@@ -14,6 +14,11 @@ export function accionesBD(personas: PersonaBD[]) {
   const resultado = async (consulta: PromiseLike<{ error: { code?: string; message: string } | null }>) => mensajeError((await consulta).error);
 
   return {
+    // Reservas por hora (solo Especiales): la BD revisa horario, cruces y fechas pasadas
+    reservarHora: (estId: number, fecha: string, desde: string, hasta: string, descripcion: string) =>
+      resultado(supabase.from("reservas_horas").insert({ estacionamiento_id: estId, fecha, desde, hasta, descripcion })),
+    borrarHora: (id: number) => resultado(supabase.from("reservas_horas").delete().eq("id", id)),
+
     // Liberar (admin): fechas / sin término / cada semana; para cualquiera o para una persona
     liberar: (estId: number, l: Liberacion) =>
       resultado(

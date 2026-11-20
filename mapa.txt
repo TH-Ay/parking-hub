@@ -25,6 +25,8 @@ supabase/migracion_v2_14.sql - admin cambia la persona de un préstamo
 supabase/migracion_v2_15.sql - préstamo vs rotación; prestar encima de rotación
 supabase/migracion_v2_16.sql - turnos mensuales de rotación, reparto semana antes
 supabase/migracion_v2_17.sql - lista de dueños para el recordatorio (con clave)
+supabase/migracion_v2_18.sql - nuevo acceso recruiting (rol en personas)
+supabase/migracion_v2_19.sql - reservas por hora de puestos Especiales
 supabase/recordatorio_apps_script.gs - Apps Script: correo semanal a dueños de fijos
 .env.local - variables reales de Supabase (NO se sube a GitHub)
 package.json - dependencias y comandos (npm run dev)
@@ -69,3 +71,5 @@ components/estacionamientos/FormLiberar.tsx - formulario Liberar: cuándo y para
 components/estacionamientos/FormDueno.tsx - panel Dueño: elegir persona sin fijo y confirmar
 components/estacionamientos/AutoDeJuguete.tsx - autito que maneja al nuevo cajón (animación)
 .claude/launch.json - configuración para abrir la app de prueba
+lib/roles.ts - roles (admin/usuario/recruiting), nombres y conversión
+components/estacionamientos/AgendaHoras.tsx - agenda por hora del Especial (08-20, 30 min)

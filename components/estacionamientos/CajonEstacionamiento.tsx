@@ -13,17 +13,23 @@ type Props = {
   escondido?: boolean; // true mientras el autito maneja hacia este cajón
   paraRotacion?: boolean; // libre, pero reservado para la lista de espera
   diaADia?: boolean; // variable que cualquiera toma día a día
+  reservasDelDia?: number; // solo Especiales: cuántas reservas por hora tiene ese día (undefined = no se ve)
 };
 
 const chip = "max-w-full truncate rounded bg-white px-1.5 py-0.5 text-[11px] font-semibold text-marca";
 
-export default function CajonEstacionamiento({ puesto, estado, elegido, onElegir, escondido = false, paraRotacion = false, diaADia = false }: Props) {
+export default function CajonEstacionamiento({ puesto, estado, elegido, onElegir, escondido = false, paraRotacion = false, diaADia = false, reservasDelDia }: Props) {
   let centro;
   if (puesto.tipo === "especial") {
     centro = (
       <>
         <Users size={26} className="text-amber-300" />
         <span className={chip}>{estado.quien}</span>
+        {reservasDelDia !== undefined && (
+          <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${reservasDelDia ? "bg-amber-400 text-amber-950" : "bg-emerald-300 text-emerald-950"}`}>
+            {reservasDelDia ? `${reservasDelDia} reserva${reservasDelDia > 1 ? "s" : ""}` : "Sin reservas"}
+          </span>
+        )}
       </>
     );
   } else if (estado.zona === "libres") {

@@ -4,8 +4,10 @@ import { useState } from "react";
 import { ArrowLeftRight, CalendarOff, Lock, LockOpen, Pencil, Star, User, UserMinus, X, type LucideIcon } from "lucide-react";
 import FormLiberar from "./FormLiberar";
 import FormDueno from "./FormDueno";
-import type { Asignacion, EstadoDelDia, Liberacion, Programado, Puesto } from "./datosPrueba";
+import AgendaHoras from "./AgendaHoras";
+import type { Asignacion, EstadoDelDia, Liberacion, Programado, Puesto, ReservaHora } from "./datosPrueba";
 import { fechaTexto, finDelTurno } from "./fechas";
+import { useRol } from "@/lib/rol";
 
 type Tomado = NonNullable<Puesto["tomados"]>[number];
 
@@ -32,10 +34,14 @@ type Props = {
   esperandoRotacion: boolean; // hoy está libre esperando la lista de espera
   siguienteEn: (desde: string, hasta: string) => string | null; // a quién le tocaría entre esas fechas
   onDarSiguiente: (desde: string, hasta: string) => void;
+  dia: string; // día que se mira en el plano (para la agenda por hora)
+  onReservarHora: (desde: string, hasta: string, descripcion: string) => void;
+  onBorrarHora: (r: ReservaHora) => void;
+  onCambiarDia: (fecha: string) => void;
 };
 
 export default function TarjetaPuesto(props: Props) {
-  const { puesto, estado, programado, hoy: fechaHoy, onLiberar, onQuitar, disponibles, onCambiarDueno, onPasarAVariable, onMarcarEspecial, onQuitarEspecial, onPasarAFijo, onAsignar, onDiaADia, onQuitarTomado, onParaTodos, listaEspera, onCambiarPersona, onRotacion, esperandoRotacion, siguienteEn, onDarSiguiente } =
+  const { puesto, estado, programado, hoy: fechaHoy, onLiberar, onQuitar, disponibles, onCambiarDueno, onPasarAVariable, onMarcarEspecial, onQuitarEspecial, onPasarAFijo, onAsignar, onDiaADia, onQuitarTomado, onParaTodos, listaEspera, onCambiarPersona, onRotacion, esperandoRotacion, siguienteEn, onDarSiguiente, dia, onReservarHora, onBorrarHora, onCambiarDia } =
     props;
   // Fechas al "Dar a la siguiente de la lista" (por defecto desde hoy hasta el fin del turno del mes; se pueden editar)
   const [desdeRot, setDesdeRot] = useState(fechaHoy);
@@ -53,8 +59,11 @@ export default function TarjetaPuesto(props: Props) {
   const hoy =
     estado.zona === "libres" ? "Libre" : estado.zona === "tomados" ? `Prestado a ${estado.quien}` : (estado.quien ?? "Sin dueño aún");
 
-  const acciones: [LucideIcon, string][] =
-    puesto.tipo === "fijo"
+  // Recruiting por ahora solo mira (sus acciones se definen en la próxima iteración)
+  const esAdmin = useRol() === "admin";
+  const acciones: [LucideIcon, string][] = !esAdmin
+    ? []
+    : puesto.tipo === "fijo"
       ? puesto.dueno
         ? [
             [User, `Dueño: ${puesto.dueno}`],
@@ -107,6 +116,18 @@ export default function TarjetaPuesto(props: Props) {
           </button>
         ))}
       </div>
+
+      {/* Solo Especiales: agenda por hora (ej. 3 clientes distintos el mismo día) */}
+      {puesto.tipo === "especial" && (
+        <AgendaHoras
+          dia={dia}
+          hoy={fechaHoy}
+          reservas={(puesto.horas ?? []).filter((h) => h.fecha === dia)}
+          onReservar={onReservarHora}
+          onBorrar={onBorrarHora}
+          onCambiarDia={onCambiarDia}
+        />
+      )}
 
       {/* Solo variables: interruptor permanente "día a día" (si está apagado, el puesto es para la rotación) */}
       {puesto.tipo === "variable" && (

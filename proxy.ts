@@ -54,9 +54,12 @@ export async function proxy(request: NextRequest) {
     if (ruta === "/") {
       return NextResponse.redirect(new URL(persona.rol === "admin" ? "/estacionamientos" : "/disponibilidad", request.url));
     }
-    // Páginas solo del admin: un usuario no entra, se va a Disponibilidad
+    // Páginas solo del admin: un usuario no entra, se va a Disponibilidad.
+    // Recruiting sí entra a Estacionamientos (ahí solo ve los Especiales), pero no a Personas.
+    const permitida =
+      persona.rol === "admin" || (persona.rol === "recruiting" && ruta.startsWith("/estacionamientos"));
     const soloAdmin = ruta.startsWith("/estacionamientos") || ruta.startsWith("/personas");
-    if (soloAdmin && persona.rol !== "admin") {
+    if (soloAdmin && !permitida) {
       return NextResponse.redirect(new URL("/disponibilidad", request.url));
     }
   }
