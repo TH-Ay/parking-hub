@@ -58,6 +58,7 @@ export default function FormPersona(props: Props) {
               {(
                 [
                   ["usuario", "Usuario"],
+                  ["recruiting", "Recruiting"],
                   ["admin", "Admin"],
                 ] as const
               ).map(([valor, texto]) => (
@@ -78,7 +79,9 @@ export default function FormPersona(props: Props) {
                 ? "No puedes cambiar tu propio rol (quedarías sin acceso al admin)."
                 : rol === "admin"
                   ? "Puede gestionar puestos y personas."
-                  : "Puede tomar, soltar y liberar su puesto."}
+                  : rol === "recruiting"
+                    ? "Como usuario, y además ve los puestos Especiales en Estacionamientos."
+                    : "Puede tomar, soltar y liberar su puesto."}
             </p>
           </div>
 

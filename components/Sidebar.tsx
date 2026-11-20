@@ -9,13 +9,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Car, CalendarDays, ChevronsLeft, ChevronsRight, Users, LogOut } from "lucide-react";
-import type { Rol } from "@/lib/rol";
+import { NOMBRE_ROL, type Rol } from "@/lib/roles";
 
-// soloAdmin: el usuario (rol "usuario") no ve esa página en el menú
-const paginas = [
-  { href: "/estacionamientos", nombre: "Estacionamientos", icono: Car, soloAdmin: true },
-  { href: "/disponibilidad", nombre: "Disponibilidad", icono: CalendarDays, soloAdmin: false },
-  { href: "/personas", nombre: "Personas", icono: Users, soloAdmin: true },
+// roles: quién ve esa página en el menú (null = todos)
+const paginas: { href: string; nombre: string; icono: typeof Car; roles: Rol[] | null }[] = [
+  { href: "/estacionamientos", nombre: "Estacionamientos", icono: Car, roles: ["admin", "recruiting"] },
+  { href: "/disponibilidad", nombre: "Disponibilidad", icono: CalendarDays, roles: null },
+  { href: "/personas", nombre: "Personas", icono: Users, roles: ["admin"] },
 ];
 
 // ---- Preferencia guardada: "auto" | "plegado" | "desplegado" ----
@@ -49,7 +49,7 @@ function guardarModo(m: Modo) {
 
 export default function Sidebar({ usuario, rol }: { usuario: string; rol: Rol }) {
   const rutaActual = usePathname();
-  const visibles = paginas.filter((p) => rol === "admin" || !p.soloAdmin);
+  const visibles = paginas.filter((p) => !p.roles || p.roles.includes(rol));
   const modo = useSyncExternalStore(suscribir, leerModo, () => "auto" as Modo);
 
   // Clases para lo que se ve SOLO desplegado / SOLO plegado (desde 540 px; abajo de eso, barra superior normal).
@@ -113,7 +113,7 @@ export default function Sidebar({ usuario, rol }: { usuario: string; rol: Rol })
       <div className="mt-auto hidden border-t border-black/10 pt-4 sm:block">
         <div className={`truncate px-2 text-xs text-marca-gris ${desplegado("block")}`}>{usuario}</div>
         <div className={`px-2 text-[11px] font-semibold uppercase tracking-wider text-acento ${desplegado("block")}`}>
-          {rol === "admin" ? "Admin" : "Usuario"}
+          {NOMBRE_ROL[rol]}
         </div>
         <form action="/auth/salir" method="post">
           <button title="Cerrar sesión" className="mt-2 flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm text-marca hover:bg-marca/5">

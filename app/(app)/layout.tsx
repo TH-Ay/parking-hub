@@ -1,9 +1,10 @@
 // Marco de las páginas internas: menú lateral + contenido.
-// Lee quién inició sesión y su rol (admin / usuario) para el menú y para bloquear páginas solo del admin.
+// Lee quién inició sesión y su rol (admin / usuario / recruiting) para el menú y para bloquear páginas solo del admin.
 import { Suspense } from "react";
 import Sidebar from "@/components/Sidebar";
 import { createClient } from "@/lib/supabase/server";
-import { RolProvider, type Rol } from "@/lib/rol";
+import { RolProvider } from "@/lib/rol";
+import { aRol, type Rol } from "@/lib/roles";
 
 export default function LayoutApp({ children }: { children: React.ReactNode }) {
   return (
@@ -22,7 +23,7 @@ async function Marco({ children }: { children: React.ReactNode }) {
   const { data: persona } = user
     ? await supabase.from("personas").select("rol").eq("user_id", user.id).maybeSingle()
     : { data: null };
-  const rol: Rol = persona?.rol === "admin" ? "admin" : "usuario";
+  const rol: Rol = aRol(persona?.rol);
 
   return (
     <RolProvider rol={rol}>

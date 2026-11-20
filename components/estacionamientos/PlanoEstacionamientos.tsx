@@ -12,6 +12,7 @@ import TarjetaPuesto from "./TarjetaPuesto";
 import CalendarioAdmin from "./CalendarioAdmin";
 import { fechaCorta, fechaTexto, finDelTurno, habil, hoyEnChile, lunesDe, sumarDias } from "./fechas";
 import ListaEspera, { type EnLista } from "./ListaEspera";
+import { useRol } from "@/lib/rol";
 import { accionesBD, type PersonaBD } from "./accionesBD";
 import { esDeRotacion, estadoAdminEn, estadoEn, programadoDe, type Asignacion, type Liberacion, type Puesto, type Zona } from "./datosPrueba";
 
@@ -37,9 +38,12 @@ function libreParaRotar(p: Puesto, fecha: string) {
 export default function PlanoEstacionamientos(props: Props) {
   // "Hoy" se calcula solo en el navegador, para que Next no lo congele al pre-armar la página
   const hoy = useSyncExternalStore(sinSuscripcion, hoyEnChile, () => null);
+  // Recruiting solo ve los puestos Especiales (ej. 307 Visitas)
+  const esAdmin = useRol() === "admin";
+  const puestos = esAdmin ? props.puestos : props.puestos.filter((p) => p.tipo === "especial");
   if (!hoy) return <p className="text-marca-gris">Cargando plano...</p>;
-  if (props.puestos.length === 0) return <p className="text-marca-gris">No hay estacionamientos cargados.</p>;
-  return <Plano hoy={hoy} {...props} />;
+  if (puestos.length === 0) return <p className="text-marca-gris">No hay estacionamientos para mostrar.</p>;
+  return <Plano hoy={hoy} {...props} puestos={puestos} />;
 }
 
 const ZONAS: { zona: Zona; letra: string; color: string; titulo: string; subtitulo: string }[] = [
@@ -56,6 +60,7 @@ function grupoEn(p: Puesto, fecha: string): Zona {
 }
 
 function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy: string }) {
+  const esAdmin = useRol() === "admin"; // recruiting: sin lista de espera
   const router = useRouter();
   const [aviso, setAviso] = useState("");
   const bd = accionesBD(personas);
@@ -386,6 +391,7 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
                     escondido={viaje?.numero === puesto.numero}
                     paraRotacion={esDeRotacion(puesto, dia)}
                     diaADia={puesto.tipo === "variable" && !!puesto.diaADia}
+                    reservasDelDia={puesto.horas?.filter((h) => h.fecha === dia).length}
                   />
                 ))}
               </ZonaEstacionamiento>
@@ -435,8 +441,15 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
             esperandoRotacion={esDeRotacion(actual.puesto, hoy)}
             siguienteEn={(desde, hasta) => siguienteEn(desde, hasta)?.nombre ?? null}
             onDarSiguiente={(desde, hasta) => darSiguiente(actual.puesto.numero, desde, hasta)}
+            dia={dia}
+            onReservarHora={(desde, hasta, descripcion) =>
+              guardar(bd.reservarHora(idDe(actual.puesto.numero), dia, desde, hasta, descripcion), `Reservado el ${actual.puesto.numero} de ${desde} a ${hasta}`)
+            }
+            onBorrarHora={(r) => guardar(bd.borrarHora(r.id), `Se borró la reserva de ${r.desde} a ${r.hasta}`)}
+            onCambiarDia={cambiarDia}
           />
           </div>
+          {esAdmin && (
           <ListaEspera
             // al llegar datos nuevos de Supabase, el recuadro se vuelve a montar con la lista real
             key={listaEspera.map((l) => `${l.personaId}:${l.orden}:${l.saltar}`).join("|")}
@@ -449,6 +462,7 @@ function Plano({ hoy, puestos, personas, listaEspera, feriados }: Props & { hoy:
             abierto={esperaAbierta}
             onAlternar={() => setEsperaAbierta((a) => !a)}
           />
+          )}
         </div>
       </div>
       )}

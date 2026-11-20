@@ -36,7 +36,11 @@ export type Puesto = {
   asignaciones: Asignacion[];
   cedidos?: Liberacion[]; // días que quien lo tiene por rotación liberó ("No voy"): quedan para todos
   tomados?: { id?: number; fecha: string; persona: string }[]; // días que alguien tomó este puesto (reservas); lo usa la vista del admin
+  horas?: ReservaHora[]; // solo Especiales: reservas por hora (ej. clientes); solo admin y recruiting
 };
+
+// Reserva por hora de un puesto Especial (tabla reservas_horas). Horas "HH:MM", bloques de 30 min, 08:00–20:00.
+export type ReservaHora = { id: number; fecha: string; desde: string; hasta: string; descripcion: string; creadoPor?: string | null };
 
 // "tomados" = Prestados: un libre que alguien tomó ese día (solo en estadoAdminEn) o un préstamo corto a una persona
 export type Zona = "fijos" | "rotacion" | "tomados" | "libres";
